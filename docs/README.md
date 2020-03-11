@@ -24,7 +24,7 @@ No conjunto de teste, X pacientes desenvolveram diabetes antes dos 50 anos e Y p
 
 ### Treinamento das redes neurais artificiais
 
-O treinamento das redes utilizando cada um dos três conjuntos de SNPs demonstrou características interessantes que acreditamos ser uma consequência dos métodos de regularização empregados. Pelo gráfico abaixo podemos notar que os modelos treinados tanto com o conjunto de SNPs aleatórios quanto o de SNPs não correlacionados não conseguem um ajuste equivalente ao modelo treinado com o conjunto de SNPs correlacionados. Esse efeito é ainda mais evidente quando comparamos a acurácia balanceada obtida nas validações, a qual atinge $~0.8$ para o conjunto de SNPs correlacionados enquanto permanece próxima a $0.5$ (acurácia esperada para um modelo aleatório, sem capacidade de predição).
+O treinamento das redes utilizando cada um dos três conjuntos de SNPs demonstrou características interessantes que acreditamos ser uma consequência dos métodos de regularização empregados. Pelo gráfico abaixo podemos notar que os modelos treinados tanto com o conjunto de SNPs aleatórios quanto o de SNPs não correlacionados não conseguem um ajuste equivalente ao modelo treinado com o conjunto de SNPs correlacionados. Esse efeito é ainda mais evidente quando comparamos a acurácia balanceada obtida nas validações, a qual atinge $>0.8$ para o conjunto de SNPs correlacionados enquanto permanece próxima a $0.5$ (acurácia esperada para um modelo aleatório, sem capacidade de predição).
 
 ![treinamento](images/training_results.png)
 
@@ -32,11 +32,11 @@ O treinamento das redes utilizando cada um dos três conjuntos de SNPs demonstro
 
 ### Teste do modelo excluindo pacientes jovens negativos
 
-Outros resultados:
+Outros resultados obtidos:
 
 - Avaliação da predição para famílias
 - Avaliação da predição por núcleos familiares (grupos de pais + filhos)
-- Importância dos atributos na predição.
+- Importância dos atributos para o modelo predição (quais os SNPs mais relevantes).
 
 ## Métodos
 

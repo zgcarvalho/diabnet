@@ -81,10 +81,11 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model, is_tri
     loss_func.to(device)
 
     # optimizer = Adam(model.parameters(), lr=params["lr"], weight_decay=params["wd"])
-    # optimizer = RAdam(model.parameters(), lr=0.0001)
+    optimizer = RAdam(model.parameters(), lr=params["lr"])
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=250, gamma=0.5, last_epoch=-1)
     # optimizer = Adam(model.parameters(), lr=params["lr"])
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.0007, momentum=0.999, nesterov=True)
-    scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.007, step_size_up=100, mode="triangular2", cycle_momentum=False)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=0.0007, momentum=0.999, nesterov=True)
+    # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.007, step_size_up=100, mode="triangular2", cycle_momentum=False)
 
     # lambda to L1 regularization at LC layer
     lambda1_dim1 = params["lambda1_dim1"]

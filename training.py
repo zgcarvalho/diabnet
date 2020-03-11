@@ -7,6 +7,7 @@ from torch.utils.data import random_split
 def net(fn_dataset):
     # neural network to SELECTED features with fixed dropout=0.5 during hyperopt
     for i in range(100):
+        print(f"Model {i:03}")
         params = {
             "l1_neurons": 256,
             "l2_neurons": 0,
@@ -38,9 +39,11 @@ def net(fn_dataset):
         len_trainset = int(0.9*len(dataset))
         trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
 
-        train(params, trainset, valset, epochs, 'diabnet/models/model-sp-soft-label-positives-1000-cyclicLR.pth', device='cuda')
+        fn_out = f"diabnet/models/model-sp-soft-label-positives-1000-decay-{i:03}.pth'"
+        print("model saved to:", fn_out)
+        train(params, trainset, valset, epochs, fn_out, device='cuda')
         # break to train only one model
-        break
+
 
 if __name__ == "__main__":
 
