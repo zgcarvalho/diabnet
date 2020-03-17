@@ -9,11 +9,11 @@ def net(fn_dataset):
     for i in range(100):
         print(f"Model {i:03}")
         params = {
-            "l1_neurons": 256,
+            "l1_neurons": 128, # 256
             "l2_neurons": 0,
             "l3_neurons": 0,
             "dp0": 0,
-            "dp1": 0.5,
+            "dp1": 0.0, # 0.5
             "dp2": 0,
             "dp3": 0,
             "lr": 0.0007,
@@ -39,7 +39,7 @@ def net(fn_dataset):
         len_trainset = int(0.9*len(dataset))
         trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
 
-        fn_out = f"diabnet/models/model-sp-soft-label-positives-1000-decay-{i:03}.pth'"
+        fn_out = f"diabnet/models/model-sp-soft-label-positives-1000-nodropout-decay-{i:03}.pth'"
         print("model saved to:", fn_out)
         train(params, trainset, valset, epochs, fn_out, device='cuda')
         # break to train only one model
