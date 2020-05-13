@@ -1,0 +1,26 @@
+2020-04-27 21:04:33.553129
+Model name: diabnet/models/model-32-sp-soft-label-positives-1000-dropout0-05-bn-decay-flood-030.pth
+
+Confusion matrix:
+[[124.  15.]
+ [ 13.  28.]]
+
+T Loss: 0.4670592427253723
+
+T Loss(reg): 0.8240849375724792
+
+V Loss: 0.545622189839681
+
+l1_neurons = 32
+l2_neurons = 0
+l3_neurons = 0
+dp0 = 0.5
+dp1 = 0.0
+dp2 = 0
+dp3 = 0
+lr = 0.0007
+wd = 1e-06
+lambda1_dim1 = 0.0003
+lambda2_dim1 = 0.05
+lambda1_dim2 = 0.0008
+lambda2_dim2 = 0.05

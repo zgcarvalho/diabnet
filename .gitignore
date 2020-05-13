@@ -1,2 +1,4 @@
 datasets/*
 notebooks/*
+log*
+tmp*

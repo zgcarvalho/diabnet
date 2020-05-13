@@ -13,7 +13,7 @@ import math
 # import torch
 # from torch.optim.optimizer import Optimizer, required
 
-def train(params, training_set, validation_set, epochs, fn_to_save_model, is_trial=False, device='cuda'):
+def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_trial=False, device='cuda'):
     device=torch.device(device)
 
 # Current best value is 0.3591878928244114 with parameters: 
@@ -80,18 +80,18 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model, is_tri
     loss_func = BCEWithLogitsLoss()
     loss_func.to(device)
 
-    # optimizer = Adam(model.parameters(), lr=params["lr"], weight_decay=params["wd"])
+    # optimization
     optimizer = RAdam(model.parameters(), lr=params["lr"])
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=250, gamma=0.5, last_epoch=-1)
-    # optimizer = Adam(model.parameters(), lr=params["lr"])
-    # optimizer = torch.optim.SGD(model.parameters(), lr=0.0007, momentum=0.999, nesterov=True)
-    # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.007, step_size_up=100, mode="triangular2", cycle_momentum=False)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.5, last_epoch=-1)
+
 
     # lambda to L1 regularization at LC layer
     lambda1_dim1 = params["lambda1_dim1"]
     lambda2_dim1 = params["lambda2_dim1"]
     lambda1_dim2 = params["lambda1_dim2"]
     lambda2_dim2 = params["lambda2_dim2"]
+
+    flood_penalty = params["flood_penalty"]
 
     for e in range(epochs):
         # model.train()
@@ -101,9 +101,6 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model, is_tri
         for i, sample in enumerate(trainloader):
             x, y_true = sample
             y_pred = model(x.to(device))
-            # print(training_set.dataset.n_feat)
-            # print(y_pred)
-            # print(y_pred.shape)
             loss = loss_func(y_pred, y_true.to(device))
 
             # elastic net regularization
@@ -117,9 +114,11 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model, is_tri
             dim2_loss = lambda1_dim2 * (l1_regularization_dim2 + l2_regularization_dim2)
 
             loss_reg = loss + dim1_loss + dim2_loss
+            flood = (loss_reg - flood_penalty).abs() + flood_penalty
 
             optimizer.zero_grad()
-            loss_reg.backward()
+            # loss_reg.backward()
+            flood.backward()
             optimizer.step()
 
             training_loss += loss.item()
@@ -141,8 +140,11 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model, is_tri
         validation_loss = 0.0
         cm = np.zeros((2,2))
         n_batchs = 0
+
+        model.eval() #! THIS MUST BE UNCOMMENTED USING BN BUT COMMENTED TO MC-DROPOUT
         # valloader.dataset.random_age = False
-        for s in range(30):   
+        repetitions = 1
+        for s in range(repetitions):   # when mcdropout is not used this loop is unnecessary, so range(1)
             for i, sample in enumerate(valloader):
                 x, y_true = sample
                 y_pred = model(x.to(device))
@@ -174,14 +176,15 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model, is_tri
         if not is_trial:
             print("V epoch {}, loss {}, acc {}, bacc {}".format(e, validation_loss, validation_acc, validation_bacc))
             print("line is true, column is pred")
-            print(cm/30)
+            print(cm/repetitions)
         # print("V epoch {}, loss {}, acc {}, bacc {}".format(e, loss_sum/(n*20), acc_sum/(n*20), bacc_sum/(n*20)))
 
         scheduler.step()
 
     if is_trial:
+        print("T epoch {}, loss {}, loss_with_regularization {}".format(e, training_loss, training_loss_reg))
         print("V epoch {}, loss {}, acc {}, bacc {}".format(e, validation_loss, validation_acc, validation_bacc))
-        print(cm/30)
+        print(cm/repetitions)
         print(params)
     # print("V epoch {}, loss {}, acc {}, bacc {}".format(e, loss_sum/(n*20), acc_sum/(n*20), bacc_sum/(n*20)))
     # print(cm/20)
@@ -203,7 +206,9 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model, is_tri
                 f.write("{} = {}\n".format(k,params[k]))
             f.close()
             
-    return validation_loss
+    # return validation_loss
+    return training_loss, validation_loss
+
 
 
 

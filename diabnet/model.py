@@ -26,8 +26,8 @@ class Model(nn.Module):
         # self.l2 = nn.Linear(n_hidden_1, n_hidden_2)
         # self.l3 = nn.Linear(n_hidden_2, n_hidden_1)
         self.exit = nn.Linear(n_hidden_1, 1)
-        # p0 = dropout_p0
-        # self.drop0 = nn.Dropout(p=p0)
+        p0 = dropout_p0
+        self.drop0 = nn.Dropout(p=p0)
         p1 = dropout_p1
         self.drop1 = nn.Dropout(p=p1)
         # p2 = dropout_p2
@@ -35,14 +35,16 @@ class Model(nn.Module):
         # p3 = dropout_p3
         # self.drop3 = nn.Dropout(p=p3)
         self.act = nn.Softplus()
+        self.bn = nn.BatchNorm1d(n_hidden_1)
 
 
     def forward(self, x):
         out = self.lc(x)
         # out = self.bn(out)
-        # out = self.drop0(out)
+        out = self.drop0(out)
         # out = self.act(out)
         out = self.l1(out)
+        out = self.bn(out)
         out = self.act(out)
         
         out = self.drop1(out)
@@ -70,7 +72,7 @@ class Model(nn.Module):
 def load(filename):
     net = torch.load(filename, map_location='cpu')
     # net = net.to(device)
-    # net.eval()
+    net.eval() #! comment this line when using mc-dropout
     return net
 
 if __name__ == "__main__":
