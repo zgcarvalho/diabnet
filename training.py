@@ -31,7 +31,7 @@ def net(fn_dataset):
         features = data.get_feature_names(fn_dataset, BMI=False, sex=True, parents_diagnostics=True)
         # print(features)
         
-        dataset = data.DiabDataset(fn_dataset, features, random_age=False, soft_label=True)
+        dataset = data.DiabDataset(fn_dataset, features, random_age=False, soft_label=True, soft_label_alpha=0.02)
         len_trainset = int(0.9*len(dataset))
         trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
 

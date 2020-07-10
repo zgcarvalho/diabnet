@@ -2,10 +2,11 @@ from torch.utils.data import Dataset
 import pandas as pd
 import numpy as np
 import torch
+from typing import Any, List
 
-# ! Balance data during load
+SOFT_LABEL_ALPHA = 0.25
 
-def get_feature_names(fn, BMI=False, sex=True, parents_diagnostics=True):
+def get_feature_names(fn: str, BMI=False, sex=True, parents_diagnostics=True) -> List[str]:
     col_names = pd.read_csv(fn).columns.values
     # always remove "id" "T2D(label)" "mo" and "fa"
     # mo_t2d and fa_t2d are removed here but can be inserted at correct position later
@@ -24,7 +25,7 @@ def get_feature_names(fn, BMI=False, sex=True, parents_diagnostics=True):
 
     return features
 
-def encode_features(feat_names, feat_values):
+def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.array:
     _check_parents_diag(feat_names)
     m = np.zeros((2, _len_encoding(feat_names)))
     for i in range(len(feat_names)):
@@ -73,7 +74,7 @@ def encode_features(feat_names, feat_values):
     
     return m
 
-def _check_parents_diag(feat_names):
+def _check_parents_diag(feat_names: List[str]):
     # check if 'mo_t2d' followed by 'fa_t2d' are at the two last positions THEY MUST BE
     if "mo_t2d" in feat_names and "fa_t2d" in feat_names:
         if feat_names[-2] != "mo_t2d" or feat_names[-1] != "fa_t2d":
@@ -82,7 +83,7 @@ def _check_parents_diag(feat_names):
                     ))
 
 
-def _len_encoding(feat_names):
+def _len_encoding(feat_names: List[str]) -> int:
     if "mo_t2d" in feat_names and "fa_t2d" in feat_names:
         return len(feat_names) + 4
     else:
@@ -90,7 +91,13 @@ def _len_encoding(feat_names):
 
 
 class DiabDataset(Dataset):
-    def __init__(self, fn_csv, feat_names, label_name="T2D", random_age=False, soft_label=True):
+    def __init__(self, 
+                 fn_csv: str, 
+                 feat_names: List[str], 
+                 label_name="T2D", 
+                 random_age=False, 
+                 soft_label=True, 
+                 soft_label_alpha=SOFT_LABEL_ALPHA):
         dt = pd.read_csv(fn_csv)
         _check_parents_diag(feat_names)
         self.feat_names = feat_names
@@ -99,30 +106,55 @@ class DiabDataset(Dataset):
          
         # soft label gives values greater than 0 to younger negatives (uncertainty)
         if soft_label:
-            self.labels = self._get_soft_labels(dt, label_name)
+            # self.labels = self._get_soft_labels(dt, label_name)
+            # self.labels = self._soft_negative_label_adjusted_by_age(
+            #     dt["AGE"].values, 
+            #     dt[label_name].values, 
+            #     alpha=soft_label_alpha)
+            self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
         else:
             self.labels = dt[label_name].values
+            
         self.random_age = random_age
         self.raw_values = dt[feat_names].values
         self.features = [encode_features(self.feat_names, raw_value) for raw_value in self.raw_values]
 
-        
     @staticmethod
-    def _get_soft_labels(dt, label_name):
-        ages = dt["AGE"].values
-        labels = dt[label_name].values
+    def _soft_negative_label_adjusted_by_age(ages: np.array, labels: np.array, alpha: float) -> np.array:
         soft_labels = np.zeros(len(labels))
         for (i,age) in enumerate(ages):
             if labels[i] == 1:
                 soft_labels[i] = 1
             else:
                 if age < 20:
-                    soft_labels[i] = 0.25 # 0.1 or 0.25
-                elif age > 70: 
+                    soft_labels[i] = alpha # 0.1 or 0.25
+                elif age > 80: 
                     soft_labels[i] = 0    
                 else: 
-                    soft_labels[i] = 0.25 * (1 - (age-20)/(70-20))
+                    soft_labels[i] = alpha * (1 - (age-20)/(80-20))
         return soft_labels
+
+    @staticmethod
+    def _soft_label(labels: np.array, alpha: float) -> np.array:
+        soft_labels = np.abs(labels-alpha)
+        return soft_labels
+        
+    # @staticmethod
+    # def _get_soft_labels(dt, label_name, penalty=MAX_PENALTY_SOFTLABEL):
+    #     ages = dt["AGE"].values
+    #     labels = dt[label_name].values
+    #     soft_labels = np.zeros(len(labels))
+    #     for (i,age) in enumerate(ages):
+    #         if labels[i] == 1:
+    #             soft_labels[i] = 1
+    #         else:
+    #             if age < 20:
+    #                 soft_labels[i] = penalty # 0.1 or 0.25
+    #             elif age > 80: 
+    #                 soft_labels[i] = 0    
+    #             else: 
+    #                 soft_labels[i] = penalty * (1 - (age-20)/(80-20))
+    #     return soft_labels
 
         
     def __len__(self):
