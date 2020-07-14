@@ -8,9 +8,9 @@ import optuna
 POSITIVE_TRAINSET = None
 RANDOM_TRAINSET = None
 
-def get_trainset(fn):
+def get_trainset(fn, soft_label_alpha):
     feat = data.get_feature_names(fn, BMI=False, sex=True, parents_diagnostics=True)
-    dataset = data.DiabDataset(fn, feat, random_age=False, soft_label=True)
+    dataset = data.DiabDataset(fn, feat, random_age=False, soft_label=True, soft_label_alpha=soft_label_alpha)
     return dataset
 
 def objective(trial):
@@ -28,7 +28,8 @@ def objective(trial):
         "lambda2_dim1": trial.suggest_loguniform('lambda2_dim1', 0.00001, 0.001),
         "lambda1_dim2": trial.suggest_loguniform('lambda1_dim2', 1e-10, 5e-6),
         "lambda2_dim2": trial.suggest_loguniform('lambda2_dim2', 0.00001, 0.01),
-        "flood_penalty":trial.suggest_uniform('flood_penalty', 0.38, 0.41)
+        "flood_penalty":trial.suggest_uniform('flood_penalty', 0.0, 0.40),
+        "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.25)
     }
     epochs = 2500
 
@@ -37,7 +38,7 @@ def objective(trial):
 
     fn_positive_dataset = './datasets/visits_sp_unique_train_positivo_1000_random_0.csv'
     if POSITIVE_TRAINSET == None:
-        POSITIVE_TRAINSET = get_trainset(fn_positive_dataset)
+        POSITIVE_TRAINSET = get_trainset(fn_positive_dataset, params["soft_label_alpha"])
 
     # fn_random_dataset = './datasets/visits_sp_unique_train_randomized_1_positivo_1000_random_0.csv'
     # if RANDOM_TRAINSET == None:

@@ -107,11 +107,11 @@ class DiabDataset(Dataset):
         # soft label gives values greater than 0 to younger negatives (uncertainty)
         if soft_label:
             # self.labels = self._get_soft_labels(dt, label_name)
-            # self.labels = self._soft_negative_label_adjusted_by_age(
-            #     dt["AGE"].values, 
-            #     dt[label_name].values, 
-            #     alpha=soft_label_alpha)
-            self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
+            self.labels = self._soft_negative_label_adjusted_by_age(
+                dt["AGE"].values, 
+                dt[label_name].values, 
+                alpha=soft_label_alpha)
+            # self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
         else:
             self.labels = dt[label_name].values
             
@@ -137,6 +137,7 @@ class DiabDataset(Dataset):
     @staticmethod
     def _soft_label(labels: np.array, alpha: float) -> np.array:
         soft_labels = np.abs(labels-alpha)
+        # soft_labels = np.maximum(labels, alpha)
         return soft_labels
         
     # @staticmethod

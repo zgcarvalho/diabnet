@@ -69,7 +69,7 @@ class Model(nn.Module):
 
         return out
 
-def load(filename):
+def load(filename: str):
     net = torch.load(filename, map_location='cpu')
     # net = net.to(device)
     net.eval() #! comment this line when using mc-dropout

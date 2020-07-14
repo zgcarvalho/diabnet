@@ -24,6 +24,7 @@ class Ensemble:
 
     def apply(self, x, samples_per_model=10):
         a = np.array([torch.sigmoid(m(x)).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
+        # a = np.array([torch.sigmoid(m(x)/0.55).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
         # print(a)
         return a
 
