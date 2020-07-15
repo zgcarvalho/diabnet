@@ -22,7 +22,7 @@ def net(fn_dataset):
             "lambda2_dim1": 0.000075,
             "lambda1_dim2": 0.0000,
             "lambda2_dim2": 0.0001,
-            "flood_penalty": 0.36 #0.39
+            "flood_penalty": 0.30 #0.39
         }
 
         epochs = 2500
@@ -31,7 +31,7 @@ def net(fn_dataset):
         features = data.get_feature_names(fn_dataset, BMI=False, sex=True, parents_diagnostics=True)
         # print(features)
         
-        dataset = data.DiabDataset(fn_dataset, features, random_age=False, soft_label=True, soft_label_alpha=0.1)
+        dataset = data.DiabDataset(fn_dataset, features, random_age=False, soft_label=True, soft_label_alpha=0.15)
         len_trainset = int(0.9*len(dataset))
         trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
 

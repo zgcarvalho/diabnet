@@ -15,10 +15,12 @@ def get_trainset(fn, soft_label_alpha):
 
 def objective(trial):
     params = {
-        "l1_neurons": trial.suggest_categorical('l1_neurons', [8,13,21]),
+        # "l1_neurons": trial.suggest_categorical('l1_neurons', [8,13,21]),
+        "l1_neurons": trial.suggest_int('l1_neurons', 4,48),
         "l2_neurons": 0,
         "l3_neurons": 0,
-        "dp0": trial.suggest_discrete_uniform('dp0', 0.35, 0.7, 0.05),
+        # "dp0": trial.suggest_discrete_uniform('dp0', 0.35, 0.7, 0.05),
+        "dp0": trial.suggest_uniform('dp0', 0.35, 0.65),
         "dp1": 0.0, # 0.5
         "dp2": 0,
         "dp3": 0,

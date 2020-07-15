@@ -61,7 +61,7 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
     # ltr, lva = int(0.7*len(dataset)), int(0.1*len(dataset))
     # trainset, valset, testset = random_split(dataset, [ltr, lva, len(dataset)-ltr-lva])
 
-    trainloader = DataLoader(training_set, batch_size=384, shuffle=True)
+    trainloader = DataLoader(training_set, batch_size=64, shuffle=True)
     
     valloader = DataLoader(validation_set, batch_size=64, shuffle=False)
 
