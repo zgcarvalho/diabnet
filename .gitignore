@@ -3,3 +3,4 @@ notebooks/*
 log*
 tmp*
 worklog-pt
+diabnet/__pycache__/*

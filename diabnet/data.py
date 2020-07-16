@@ -114,10 +114,12 @@ class DiabDataset(Dataset):
             # self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
         else:
             self.labels = dt[label_name].values
+        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1)
             
         self.random_age = random_age
         self.raw_values = dt[feat_names].values
-        self.features = [encode_features(self.feat_names, raw_value) for raw_value in self.raw_values]
+        # self.features = [encode_features(self.feat_names, raw_value) for raw_value in self.raw_values]
+        self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float)
 
     @staticmethod
     def _soft_negative_label_adjusted_by_age(ages: np.array, labels: np.array, alpha: float) -> np.array:
@@ -160,33 +162,38 @@ class DiabDataset(Dataset):
         
     def __len__(self):
         return len(self.labels)
+    
+    # def __getitem__(self, idx):
+        
+    #     if self.random_age:
+    #         self.randomize_age(idx)
+
+    #     #talvez falte um [] no label
+    #     return (torch.tensor(self.features[idx], dtype=torch.float32), torch.tensor([self.labels[idx]], dtype=torch.float))
 
     def __getitem__(self, idx):
-        
-        if self.random_age:
-            self.randomize_age(idx)
+        return self.features[idx], self.labels[idx]
 
-        #talvez falte um [] no label
-        return (torch.tensor(self.features[idx], dtype=torch.float32), torch.tensor([self.labels[idx]], dtype=torch.float))
+    
 
-    def randomize_age(self, idx):
-        true_age = self.features[idx][0,-1]
-        if self.labels[idx] == 1:
-            if true_age > 70:
-                age = true_age
-            else:
-                age = np.random.randint(true_age, 70+1)
-            # age = true_age + np.abs(np.random.normal(0, 3))
-        else:
-            if true_age < 30:
-                age = true_age
-            else: 
-                age = np.random.randint(30, true_age+1)
-            # age = true_age - np.abs(np.random.normal(0, 3))
+    # def randomize_age(self, idx):
+    #     true_age = self.features[idx][0,-1]
+    #     if self.labels[idx] == 1:
+    #         if true_age > 70:
+    #             age = true_age
+    #         else:
+    #             age = np.random.randint(true_age, 70+1)
+    #         # age = true_age + np.abs(np.random.normal(0, 3))
+    #     else:
+    #         if true_age < 30:
+    #             age = true_age
+    #         else: 
+    #             age = np.random.randint(30, true_age+1)
+    #         # age = true_age - np.abs(np.random.normal(0, 3))
         
-        for i in range(self.n_feat):
-            if self.feat_names[i] == "AGE":
-                self.features[idx][0,i] = age
+    #     for i in range(self.n_feat):
+    #         if self.feat_names[i] == "AGE":
+    #             self.features[idx][0,i] = age
 
 
 
@@ -213,11 +220,12 @@ if __name__ == "__main__":
     #     return features
 
     features = get_feature_names(DATASET, BMI=False)[991:]
-    print(features)
+    # print(features)
     dataset = DiabDataset(DATASET, features, random_age=False, soft_label=True)
-    print(dataset.labels)
-    print(dataset.raw_values.shape)
-    print(dataset.raw_values[0])
+    print(dataset.features.shape)
+    print(dataset.labels.shape)
+    # print(dataset.raw_values.shape)
+    # print(dataset.raw_values[0])
     print(dataset[0])
     # print(dataset.features[-1])
     # print(dataset.raw[-1])
