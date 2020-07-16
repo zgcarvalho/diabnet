@@ -35,7 +35,7 @@ def net(fn_dataset):
         len_trainset = int(0.9*len(dataset))
         trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
 
-        fn_out = f"diabnet/models/model-21-sp-soft-label-age-positives-2500-dropout0-bn-decay-flood-hyperopt-{i:03}.pth"
+        fn_out = f"diabnet/models/model-21-sp-soft-label-age-positives-2500-dropout0-bn-decay-flood-hyperopt-batch64-{i:03}.pth"
         print("model saved to:", fn_out)
         train(params, trainset, valset, epochs, fn_out, device='cuda')
         # break to train only one model
