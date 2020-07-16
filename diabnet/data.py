@@ -95,18 +95,15 @@ class DiabDataset(Dataset):
                  fn_csv: str, 
                  feat_names: List[str], 
                  label_name="T2D", 
-                 random_age=False, 
                  soft_label=True, 
                  soft_label_alpha=SOFT_LABEL_ALPHA):
         dt = pd.read_csv(fn_csv)
         _check_parents_diag(feat_names)
         self.feat_names = feat_names
         self.n_feat = _len_encoding(feat_names)
-        # self._fix_parents_feat()
          
         # soft label gives values greater than 0 to younger negatives (uncertainty)
         if soft_label:
-            # self.labels = self._get_soft_labels(dt, label_name)
             self.labels = self._soft_negative_label_adjusted_by_age(
                 dt["AGE"].values, 
                 dt[label_name].values, 
@@ -116,9 +113,7 @@ class DiabDataset(Dataset):
             self.labels = dt[label_name].values
         self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1)
             
-        self.random_age = random_age
         self.raw_values = dt[feat_names].values
-        # self.features = [encode_features(self.feat_names, raw_value) for raw_value in self.raw_values]
         self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float)
 
     @staticmethod
@@ -142,39 +137,12 @@ class DiabDataset(Dataset):
         # soft_labels = np.maximum(labels, alpha)
         return soft_labels
         
-    # @staticmethod
-    # def _get_soft_labels(dt, label_name, penalty=MAX_PENALTY_SOFTLABEL):
-    #     ages = dt["AGE"].values
-    #     labels = dt[label_name].values
-    #     soft_labels = np.zeros(len(labels))
-    #     for (i,age) in enumerate(ages):
-    #         if labels[i] == 1:
-    #             soft_labels[i] = 1
-    #         else:
-    #             if age < 20:
-    #                 soft_labels[i] = penalty # 0.1 or 0.25
-    #             elif age > 80: 
-    #                 soft_labels[i] = 0    
-    #             else: 
-    #                 soft_labels[i] = penalty * (1 - (age-20)/(80-20))
-    #     return soft_labels
-
-        
     def __len__(self):
         return len(self.labels)
     
-    # def __getitem__(self, idx):
-        
-    #     if self.random_age:
-    #         self.randomize_age(idx)
-
-    #     #talvez falte um [] no label
-    #     return (torch.tensor(self.features[idx], dtype=torch.float32), torch.tensor([self.labels[idx]], dtype=torch.float))
-
     def __getitem__(self, idx):
         return self.features[idx], self.labels[idx]
 
-    
 
     # def randomize_age(self, idx):
     #     true_age = self.features[idx][0,-1]
@@ -221,7 +189,7 @@ if __name__ == "__main__":
 
     features = get_feature_names(DATASET, BMI=False)[991:]
     # print(features)
-    dataset = DiabDataset(DATASET, features, random_age=False, soft_label=True)
+    dataset = DiabDataset(DATASET, features, soft_label=True)
     print(dataset.features.shape)
     print(dataset.labels.shape)
     # print(dataset.raw_values.shape)
