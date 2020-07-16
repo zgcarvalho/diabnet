@@ -16,52 +16,7 @@ import math
 def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_trial=False, device='cuda'):
     device=torch.device(device)
 
-# Current best value is 0.3591878928244114 with parameters: 
-# {'l1_neurons': 38, 
-# 'l2_neurons': 32, 
-# 'dropout_1': 0.1, 
-# 'dropout_2': 0.1, 
-# 'learning_rate': 2.703525027574716e-05, 
-# 'weight_decay': 0.00023586800364526562}
-
-##### one layer 
-# Current best value is 0.3367238938808441 with parameters: 
-# {'l1_neurons': 140, 
-# 'dropout_1': 0.5, 
-# 'learning_rate': 1.4787445433385137e-05, 
-# 'weight_decay': 0.0002787682549966316}
-
-##### two layers
-
-    # if trial:
-    #     l1_neurons = trial.suggest_int('l1_neurons',2,192)
-    #     l2_neurons = 0
-    #     l3_neurons = 0
-    #     # dp0 = trial.suggest_discrete_uniform('dropout_0', 0.0, 1.0, 0.05)
-    #     dp0 = 0
-    #     dp1 = trial.suggest_discrete_uniform('dropout_1', 0.05, 1.0, 0.05)
-    #     dp2 = 0
-    #     dp3 = 0
-    #     lr = trial.suggest_loguniform('learning_rate', 1e-6, 1e-3)
-    #     wd = trial.suggest_loguniform('weight_decay', 1e-6, 1e-2)
-    # else:
-    #     l1_neurons = 100
-    #     l2_neurons = 0
-    #     l3_neurons = 0
-    #     dp0 = 0
-    #     dp1 = 0.05
-    #     dp2 = 0.0
-    #     dp3 = 0.0
-    #     # lr = 1.5e-05
-    #     lr = 3e-04
-    #     wd = 0.00045
-
-    # dataset = data.DiabDataset(fn_data, random_age=False)
-    # print(len(dataset))
-    # ltr, lva = int(0.7*len(dataset)), int(0.1*len(dataset))
-    # trainset, valset, testset = random_split(dataset, [ltr, lva, len(dataset)-ltr-lva])
-
-    trainloader = DataLoader(training_set, batch_size=64, shuffle=True)
+    trainloader = DataLoader(training_set, batch_size=params["batch_size"], shuffle=True)
     
     valloader = DataLoader(validation_set, batch_size=64, shuffle=False)
 
@@ -94,7 +49,7 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
     flood_penalty = params["flood_penalty"]
 
     for e in range(epochs):
-        # model.train()
+        model.train()
         # trainloader.dataset.random_age = True
 
         training_loss, training_loss_reg, n_batchs = 0.0, 0.0, 0
@@ -135,14 +90,12 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
             print("T epoch {}, loss {}, loss_with_regularization {}".format(e, training_loss, training_loss_reg))
 
 
-        # loss_sum, acc_sum, bacc_sum = 0, 0, 0
-        # loss_val_list, acc_val_list, bacc_val_list = [],[],[]
         validation_loss = 0.0
         cm = np.zeros((2,2))
         n_batchs = 0
 
         model.eval() #! THIS MUST BE UNCOMMENTED USING BN BUT COMMENTED TO MC-DROPOUT
-        # valloader.dataset.random_age = False
+
         repetitions = 1
         for s in range(repetitions):   # when mcdropout is not used this loop is unnecessary, so range(1)
             for i, sample in enumerate(valloader):
@@ -150,24 +103,15 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
                 y_pred = model(x.to(device))
 
                 loss = loss_func(y_pred, y_true.to(device))
-                # loss_val_list.append(loss.item())
 
                 t = y_true.gt(0.5).cpu().detach().numpy()
                 p = y_pred.gt(0).cpu().detach().numpy()
-                # print(x)
-                # print(y_pred)
-                # print(torch.sigmoid(y_pred))
-                # print(p)
-                # return
-                # acc_val_list.append(accuracy_score(t, p))
-                # bacc_val_list.append(balanced_accuracy_score(t, p))
                 cm += np.array(confusion_matrix(t, p))
-                # auc = roc_auc_score(t, y_pred.detach().numpy())
-                # print(auc)
+
                 validation_loss += loss.item()
                 
                 n_batchs += 1 
-                # return
+
 
         validation_loss /= n_batchs # 30 because we are using 30 samples "for...range(30)"
         validation_acc = np.sum(np.diag(cm)) / cm.sum()
@@ -177,7 +121,6 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
             print("V epoch {}, loss {}, acc {}, bacc {}".format(e, validation_loss, validation_acc, validation_bacc))
             print("line is true, column is pred")
             print(cm/repetitions)
-        # print("V epoch {}, loss {}, acc {}, bacc {}".format(e, loss_sum/(n*20), acc_sum/(n*20), bacc_sum/(n*20)))
 
         scheduler.step()
 
@@ -186,8 +129,6 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
         print("V epoch {}, loss {}, acc {}, bacc {}".format(e, validation_loss, validation_acc, validation_bacc))
         print(cm/repetitions)
         print(params)
-    # print("V epoch {}, loss {}, acc {}, bacc {}".format(e, loss_sum/(n*20), acc_sum/(n*20), bacc_sum/(n*20)))
-    # print(cm/20)
     
 
     if fn_to_save_model != "":

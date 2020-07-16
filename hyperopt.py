@@ -10,12 +10,13 @@ RANDOM_TRAINSET = None
 
 def get_trainset(fn, soft_label_alpha):
     feat = data.get_feature_names(fn, BMI=False, sex=True, parents_diagnostics=True)
-    dataset = data.DiabDataset(fn, feat, random_age=False, soft_label=True, soft_label_alpha=soft_label_alpha)
+    dataset = data.DiabDataset(fn, feat, soft_label=True, soft_label_alpha=soft_label_alpha)
     return dataset
 
 def objective(trial):
     params = {
         # "l1_neurons": trial.suggest_categorical('l1_neurons', [8,13,21]),
+        "batch_size": 256,
         "l1_neurons": trial.suggest_int('l1_neurons', 4,48),
         "l2_neurons": 0,
         "l3_neurons": 0,

@@ -96,7 +96,8 @@ class DiabDataset(Dataset):
                  feat_names: List[str], 
                  label_name="T2D", 
                  soft_label=True, 
-                 soft_label_alpha=SOFT_LABEL_ALPHA):
+                 soft_label_alpha=SOFT_LABEL_ALPHA,
+                 device='cuda'):
         dt = pd.read_csv(fn_csv)
         _check_parents_diag(feat_names)
         self.feat_names = feat_names
@@ -111,10 +112,10 @@ class DiabDataset(Dataset):
             # self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
         else:
             self.labels = dt[label_name].values
-        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1)
+        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1).to(device)
             
         self.raw_values = dt[feat_names].values
-        self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float)
+        self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
 
     @staticmethod
     def _soft_negative_label_adjusted_by_age(ages: np.array, labels: np.array, alpha: float) -> np.array:
