@@ -148,7 +148,7 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
             f.close()
             
     # return validation_loss
-    return training_loss, validation_loss
+    return training_loss, validation_loss, validation_acc, validation_bacc
 
 
 
