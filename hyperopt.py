@@ -17,7 +17,7 @@ def objective(trial):
     params = {
         # "l1_neurons": trial.suggest_categorical('l1_neurons', [8,13,21]),
         "batch_size": 256,
-        "l1_neurons": trial.suggest_int('l1_neurons', 3,8),
+        "l1_neurons": trial.suggest_int('l1_neurons', 3,13),
         "l2_neurons": 0,
         "l3_neurons": 0,
         # "dp0": trial.suggest_discrete_uniform('dp0', 0.35, 0.7, 0.05),

@@ -108,7 +108,7 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
                 
                 ece, mce = ece_mce(y_pred, y_true)
                 
-                print(f'Epoch {e} ECE {ece.item()} MCE {mce.item()}')
+                # print(f'Epoch {e} ECE {ece.item()} MCE {mce.item()}')
 
                 t = y_true.gt(0.5).cpu().detach().numpy()
                 p = y_pred.gt(0).cpu().detach().numpy()
@@ -133,6 +133,7 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
     if is_trial:
         print("T epoch {}, loss {}, loss_with_regularization {}".format(e, training_loss, training_loss_reg))
         print("V epoch {}, loss {}, acc {}, bacc {}".format(e, validation_loss, validation_acc, validation_bacc))
+        print(f'Epoch {e} ECE {ece.item()} MCE {mce.item()}')
         print(cm/repetitions)
         print(params)
     
