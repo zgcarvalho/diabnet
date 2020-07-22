@@ -1,6 +1,7 @@
 from diabnet import data
 from diabnet.model import Model
 from diabnet.optim import RAdam
+from diabnet.calibration import ece_mce
 from torch.utils.data import DataLoader, random_split
 from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam
@@ -18,7 +19,8 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
 
     trainloader = DataLoader(training_set, batch_size=params["batch_size"], shuffle=True)
     
-    valloader = DataLoader(validation_set, batch_size=64, shuffle=False)
+    # valloader = DataLoader(validation_set, batch_size=64, shuffle=False)
+    valloader = DataLoader(validation_set, batch_size=len(validation_set), shuffle=False)
 
     # print("Number of features", training_set.dataset.n_feat)
     model = Model(
@@ -103,6 +105,10 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
                 y_pred = model(x.to(device))
 
                 loss = loss_func(y_pred, y_true.to(device))
+                
+                ece, mce = ece_mce(y_pred, y_true)
+                
+                print(f'Epoch {e} ECE {ece.item()} MCE {mce.item()}')
 
                 t = y_true.gt(0.5).cpu().detach().numpy()
                 p = y_pred.gt(0).cpu().detach().numpy()
@@ -139,7 +145,7 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
             f.write("\nModel name: {}\n".format(fn_to_save_model))
             # f.write("\nAccuracy: {}\n".format(np.median(acc_val_list)))
             # f.write("\nBalanced Accuracy: {}\n".format(np.median(bacc_val_list)))
-            f.write("\nConfusion matrix:\n{}\n".format(cm/30))
+            f.write("\nConfusion matrix:\n{}\n".format(cm/repetitions))
             f.write("\nT Loss: {}\n".format(training_loss))
             f.write("\nT Loss(reg): {}\n".format(training_loss_reg))
             f.write("\nV Loss: {}\n\n".format(validation_loss))

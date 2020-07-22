@@ -67,7 +67,7 @@ def objective(trial):
 
 if __name__ == "__main__":
     study = optuna.create_study(study_name='batch32', direction='minimize', storage='sqlite:///hyperopt_batch32.db', load_if_exists=True)
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=1000)
     
     print("Number of finished trials: {}".format(len(study.trials)))
 

@@ -10,20 +10,22 @@ def net(fn_dataset):
         # start_time = default_timer()
         print(f"Model {i:03}")
         params = {
-            "l1_neurons": 21, #13
+            "l1_neurons": 5, #13
             "l2_neurons": 0,
             "l3_neurons": 0,
-            "dp0": 0.5,
+            "dp0": 0.55,
             "dp1": 0.0, # 0.5
             "dp2": 0,
             "dp3": 0,
             "lr": 0.004,
             "wd": 0.000001,
             "lambda1_dim1": 0.0000,
-            "lambda2_dim1": 0.000075,
+            "lambda2_dim1": 0.0000,
             "lambda1_dim2": 0.0000,
-            "lambda2_dim2": 0.0001,
-            "flood_penalty": 0.30 #0.39
+            "lambda2_dim2": 0.00025,
+            "flood_penalty": 0.13, #0.39
+            "soft_label_alpha": 0.13,
+            "batch_size": 256
         }
 
         epochs = 2500
@@ -32,13 +34,13 @@ def net(fn_dataset):
         features = data.get_feature_names(fn_dataset, BMI=False, sex=True, parents_diagnostics=True)
         # print(features)
         
-        dataset = data.DiabDataset(fn_dataset, features, soft_label=True, soft_label_alpha=0.15)
+        dataset = data.DiabDataset(fn_dataset, features, soft_label=True, soft_label_alpha=params["soft_label_alpha"])
         len_trainset = int(0.9*len(dataset))
         trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
 
-        fn_out = f"diabnet/models/model-21-sp-soft-label-age-positives-2500-dropout0-bn-decay-flood-hyperopt-batch64-{i:03}.pth"
+        fn_out = f"diabnet/models/model-5-soft-label-age-positives-2500-dropout0-bn-decay-flood-hyperopt-batch256-{i:03}.pth"
         print("model saved to:", fn_out)
-        train(params, trainset, valset, epochs, fn_out, device='cuda', is_trial=True)
+        train(params, trainset, valset, epochs, fn_out, device='cuda', is_trial=False)
         # end_time = default_timer()
         # break
         # break to train only one model
