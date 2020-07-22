@@ -16,23 +16,23 @@ def get_trainset(fn, soft_label_alpha):
 def objective(trial):
     params = {
         # "l1_neurons": trial.suggest_categorical('l1_neurons', [8,13,21]),
-        "batch_size": 32,
-        "l1_neurons": trial.suggest_int('l1_neurons', 4,48),
+        "batch_size": 256,
+        "l1_neurons": trial.suggest_int('l1_neurons', 3,8),
         "l2_neurons": 0,
         "l3_neurons": 0,
         # "dp0": trial.suggest_discrete_uniform('dp0', 0.35, 0.7, 0.05),
-        "dp0": trial.suggest_uniform('dp0', 0.35, 0.65),
+        "dp0": trial.suggest_uniform('dp0', 0.45, 0.7),
         "dp1": 0.0, # 0.5
         "dp2": 0,
         "dp3": 0,
-        "lr": trial.suggest_uniform('lr', 0.001, 0.007),
+        "lr": 0.004,
         "wd": 0.000001,
-        "lambda1_dim1": trial.suggest_loguniform('lambda1_dim1', 1e-10, 5e-6),
-        "lambda2_dim1": trial.suggest_loguniform('lambda2_dim1', 0.00001, 0.001),
-        "lambda1_dim2": trial.suggest_loguniform('lambda1_dim2', 1e-10, 5e-6),
-        "lambda2_dim2": trial.suggest_loguniform('lambda2_dim2', 0.00001, 0.01),
-        "flood_penalty":trial.suggest_uniform('flood_penalty', 0.0, 0.40),
-        "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.25)
+        "lambda1_dim1": 0.0,
+        "lambda2_dim1": 0.0,
+        "lambda1_dim2": 0.0,
+        "lambda2_dim2": 0.00025,
+        "flood_penalty":trial.suggest_uniform('flood_penalty', 0.0, 0.20),
+        "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.20)
     }
     epochs = 2500
 
@@ -66,7 +66,7 @@ def objective(trial):
 
 
 if __name__ == "__main__":
-    study = optuna.create_study(study_name='batch32', direction='minimize', storage='sqlite:///hyperopt_batch32.db', load_if_exists=True)
+    study = optuna.create_study(study_name='batch32', direction='minimize', storage='sqlite:///hyperopt_batch256_round2.db', load_if_exists=True)
     study.optimize(objective, n_trials=1000)
     
     print("Number of finished trials: {}".format(len(study.trials)))
