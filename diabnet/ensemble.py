@@ -13,7 +13,7 @@ class Ensemble:
     def _load(self, prefix):
         print(prefix)
         models = []
-        for fn in glob(f'{prefix}*.pth'):
+        for fn in glob(f'{prefix}-???.pth'):
             models.append(load(fn))
         return models
 

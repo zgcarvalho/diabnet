@@ -1,4 +1,18 @@
 import torch
+from torch import nn
+
+class CalibrationModel(nn.Module):
+    def __init__(self, model):
+        super(CalibrationModel, self).__init__()
+        model.eval()
+        self.model = model
+        self.alpha = nn.Parameter(torch.ones(1, requires_grad=True))
+        self.beta = nn.Parameter(torch.zeros(1, requires_grad=True))
+        
+    def forward(self, x):
+        h = self.alpha * self.model(x) + self.beta
+        return h
+
 
 def ece_mce(logits, targets, bins=10):
     preds = torch.sigmoid(logits)

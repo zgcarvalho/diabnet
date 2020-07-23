@@ -88,7 +88,44 @@ def _len_encoding(feat_names: List[str]) -> int:
         return len(feat_names) + 4
     else:
         return len(feat_names)
+    
+class CalibrationDataset(Dataset):
+    def __init__(self, 
+                fn_csv: str, 
+                feat_names: List[str],
+                balance=True, 
+                label_name="T2D", 
+                age_cutoff=60,
+                device='cuda'):
+        
+        dt = pd.read_csv(fn_csv)
+        dt = dt[dt['AGE'] >= age_cutoff]
+        if balance:
+            dt = self.balance_df(dt)
+        _check_parents_diag(feat_names)
+        self.feat_names = feat_names
+        self.n_feat = _len_encoding(feat_names)
+         
 
+        self.labels = dt[label_name].values
+        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1).to(device)
+            
+        self.raw_values = dt[feat_names].values
+        self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
+
+    @staticmethod
+    def balance_df(df: pd.DataFrame) -> pd.DataFrame:
+        # print(df)
+        g = df.groupby(['T2D'])
+        g = g.apply(lambda x: x.sample(g.size().min()))
+        # print(g)
+        return g
+        
+    def __len__(self):
+        return len(self.labels)
+    
+    def __getitem__(self, idx):
+        return self.features[idx], self.labels[idx]
 
 class DiabDataset(Dataset):
     def __init__(self, 
