@@ -25,7 +25,8 @@ def objective(trial):
         "dp1": 0.0, # 0.5
         "dp2": 0,
         "dp3": 0,
-        "lr": 0.004,
+        # "lr": 0.004,
+        "lr" : trial.suggest_loguniform('lr', 0.0007, 0.07),
         "wd": 0.000001,
         "lambda1_dim1": 0.0,
         "lambda2_dim1": 0.0,
@@ -66,7 +67,7 @@ def objective(trial):
 
 
 if __name__ == "__main__":
-    study = optuna.create_study(study_name='batch32', direction='minimize', storage='sqlite:///hyperopt_batch256_round2.db', load_if_exists=True)
+    study = optuna.create_study(study_name='lc2', direction='minimize', storage='sqlite:///hyperopt_batch256_round0_lc2.db', load_if_exists=True)
     study.optimize(objective, n_trials=1000)
     
     print("Number of finished trials: {}".format(len(study.trials)))

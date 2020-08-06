@@ -62,6 +62,7 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
 
             # elastic net regularization
             lc_params = model.lc.weight
+            # lc_params = model.lc.w1
             l1_regularization_dim1 = lambda2_dim1*torch.sum(torch.norm(lc_params,1, dim=1))
             l2_regularization_dim1 = (1.0-lambda2_dim1)/2.0*torch.sum(torch.norm(lc_params,2, dim=1))
             l1_regularization_dim2 = lambda2_dim2*torch.sum(torch.norm(lc_params,1, dim=2))

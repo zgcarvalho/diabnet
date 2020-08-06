@@ -2,6 +2,11 @@ import torch
 from torch import nn
 
 class LocallyConnected(nn.Module):
+    """LocallyConnected Layer generates a linear representation for each SNP...
+
+    Args:
+        nn ([type]): [description]
+    """    
     def __init__(self, in_channels, out_channels, output_size, bias=False):
         super(LocallyConnected, self).__init__()
         self.weight = nn.Parameter(torch.randn(1, out_channels, in_channels, output_size))
@@ -17,11 +22,64 @@ class LocallyConnected(nn.Module):
             out += self.bias
         out = out.squeeze(1)
         return out
+    
+class LocallyConnected2(nn.Module):
+    """LocallyConnected2 Layer generates a NONlinear representation for each SNP...
+    The diference between LC and LC2 is that LC2 has a tanh activation.
+
+    Args:
+        nn ([type]): [description]
+    """    
+    def __init__(self, in_channels, out_channels, output_size, bias=False):
+        super(LocallyConnected2, self).__init__()
+        self.weight = nn.Parameter(torch.randn(1, out_channels, in_channels, output_size))
+        if bias:
+            self.bias = nn.Parameter(torch.randn(1, out_channels, output_size))
+        else:
+            self.register_parameter('bias', None)
+
+
+    def forward(self, x):
+        out = (x.unsqueeze(1) * self.weight).sum(2)
+        if self.bias is not None:
+            out += self.bias
+        out = out.squeeze(1)
+        out = torch.tanh(out)
+        return out
+
+class LocallyConnected3(nn.Module):
+    """LocallyConnected3 Layer generates a NONlinear representation for each SNP...
+    The diference between LC3 and LC/LC2 is that LC3 has a hidden layer with tanh 
+    activation functions.
+
+    Args:
+        nn ([type]): [description]
+    """
+    def __init__(self, in_channels, out_channels, output_size, bias=False):
+        super(LocallyConnected3, self).__init__()
+        self.w1 = nn.Parameter(torch.randn(1, in_channels, in_channels, output_size))
+        self.w2 = nn.Parameter(torch.randn(1, out_channels, in_channels, output_size))
+        if bias:
+            self.bias = nn.Parameter(torch.randn(1, out_channels, output_size))
+        else:
+            self.register_parameter('bias', None)
+
+
+    def forward(self, x):
+        out = (x.unsqueeze(1) * self.w1).sum(1)
+        out = torch.tanh(out)
+        out = (out.unsqueeze(1) * self.w2).sum(2)
+        if self.bias is not None:
+            out += self.bias
+        out = out.squeeze(1)
+        out = torch.tanh(out)
+        return out
 
 class Model(nn.Module):
     def __init__(self, n_feat, n_hidden_1, n_hidden_2, n_hidden_3, dropout_p0, dropout_p1, dropout_p2, dropout_p3):
         super(Model, self).__init__()
-        self.lc = LocallyConnected(2, 1, n_feat, bias=False)
+        # self.lc = LocallyConnected(2, 1, n_feat, bias=False)
+        self.lc = LocallyConnected2(2, 1, n_feat, bias=True)
         self.l1 = nn.Linear(n_feat, n_hidden_1)
         # self.l2 = nn.Linear(n_hidden_1, n_hidden_2)
         # self.l3 = nn.Linear(n_hidden_2, n_hidden_1)
