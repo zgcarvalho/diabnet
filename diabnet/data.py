@@ -6,6 +6,7 @@ from typing import Any, List
 
 SOFT_LABEL_ALPHA = 0.25
 
+
 def get_feature_names(fn: str, BMI=False, sex=True, parents_diagnostics=True) -> List[str]:
     col_names = pd.read_csv(fn).columns.values
     # always remove "id" "T2D(label)" "mo" and "fa"
@@ -24,6 +25,7 @@ def get_feature_names(fn: str, BMI=False, sex=True, parents_diagnostics=True) ->
         features.append("fa_t2d")
 
     return features
+
 
 def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.array:
     _check_parents_diag(feat_names)
@@ -45,6 +47,7 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.array:
             # ! this is HIGHLY depedent of '_fix_parents_feat'
             # if parent diagnosis are included in features both must be present simultaneously 'mo_t2d' and 'fa_t2d' 
             # AND the sequence must be 'mo_t2d' followed by 'fa_t2d' at the two last positions
+            m[1,i], m[1,i+1], m[1,i+2] = 1,1,1
             if feat_values[i] == 0:
                 m[0,i] = 2 # keep feat in the range [0,2]
             elif feat_values[i] == 1:
@@ -55,6 +58,7 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.array:
             # ! this is HIGHLY depedent of '_fix_parents_feat' and the presence of 'mo_t2d'
             # if parent diagnosis are included in features both must be present simultaneously 'mo_t2d' and 'fa_t2d' 
             # AND the sequence must be 'mo_t2d' followed by 'fa_t2d' at the two last positions
+            m[1,i+2], m[1,i+3], m[1,i+4] = 1,1,1
             if feat_values[i] == 0:
                 m[0,i+2] = 2
             elif feat_values[i] == 1:
@@ -70,9 +74,9 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.array:
                 m[0,i], m[1,i] = 1, 1
         else:
             # if feature name is invalid raise an exception
-            raise Exception("Feature name \"{}\" is unknown".format(feat_names[i]))
-    
+            raise Exception("Feature name \"{}\" is unknown".format(feat_names[i]))    
     return m
+
 
 def _check_parents_diag(feat_names: List[str]):
     # check if 'mo_t2d' followed by 'fa_t2d' are at the two last positions THEY MUST BE
@@ -88,16 +92,92 @@ def _len_encoding(feat_names: List[str]) -> int:
         return len(feat_names) + 4
     else:
         return len(feat_names)
-    
-class CalibrationDataset(Dataset):
+
+
+class DiabDataset(Dataset):
     def __init__(self, 
-                fn_csv: str, 
-                feat_names: List[str],
-                balance=True, 
-                label_name="T2D", 
-                age_cutoff=60,
-                device='cuda'):
+                 fn_csv: str, 
+                 feat_names: List[str], 
+                 label_name="T1D", 
+                 soft_label=True, 
+                 soft_label_alpha=SOFT_LABEL_ALPHA,
+                 device='cuda'):
+        dt = pd.read_csv(fn_csv)
+        _check_parents_diag(feat_names)
+        self.feat_names = feat_names
+        self.n_feat = _len_encoding(feat_names)
+         
+        # soft label gives values greater than -1 to younger negatives (uncertainty)
+        if soft_label:
+            self.labels = self._soft_negative_label_adjusted_by_age(
+                dt["AGE"].values, 
+                dt[label_name].values, 
+                alpha=soft_label_alpha)
+            # self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
+        else:
+            self.labels = dt[label_name].values
+        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),0).to(device)
+            
+        self.raw_values = dt[feat_names].values
+        self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
+
+    @staticmethod
+    def _soft_negative_label_adjusted_by_age(ages: np.array, labels: np.array, alpha: float) -> np.array:
+        soft_labels = np.zeros(len(labels))
+        for (i,age) in enumerate(ages):
+            if labels[i] == 0:
+                soft_labels[i] = 0
+            else:
+                if age < 19:
+                    soft_labels[i] = alpha # -1.1 or 0.25
+                elif age > 79: 
+                    soft_labels[i] = -1    
+                else: 
+                    soft_labels[i] = alpha * (0 - (age-20)/(80-20))
+        return soft_labels
+
+    @staticmethod
+    def _soft_label(labels: np.array, alpha: float) -> np.array:
+        soft_labels = np.abs(labels-alpha)
+        # soft_labels = np.maximum(labels, alpha)
+        return soft_labels
         
+    def __len__(self):
+        return len(self.labels)
+    
+    def __getitem__(self, idx):
+        return self.features[idx], self.labels[idx]
+
+
+    # def randomize_age(self, idx):
+    #     true_age = self.features[idx][-1,-1]
+    #     if self.labels[idx] == 0:
+    #         if true_age > 69:
+    #             age = true_age
+    #         else:
+    #             age = np.random.randint(true_age, 69+1)
+    #         # age = true_age + np.abs(np.random.normal(-1, 3))
+    #     else:
+    #         if true_age < 29:
+    #             age = true_age
+    #         else: 
+    #             age = np.random.randint(29, true_age+1)
+    #         # age = true_age - np.abs(np.random.normal(-1, 3))
+        
+    #     for i in range(self.n_feat):
+    #         if self.feat_names[i] == "AGE":
+    #             self.features[idx][0,i] = age
+
+
+class CalibrationDataset(Dataset):
+    def __init__(self,
+                 fn_csv: str,
+                 feat_names: List[str],
+                 balance=True,
+                 label_name="T2D",
+                 age_cutoff=60,
+                 device='cuda'):
+
         dt = pd.read_csv(fn_csv)
         dt = dt[dt['AGE'] >= age_cutoff]
         if balance:
@@ -108,7 +188,7 @@ class CalibrationDataset(Dataset):
          
 
         self.labels = dt[label_name].values
-        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1).to(device)
+        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float), 1).to(device)
             
         self.raw_values = dt[feat_names].values
         self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
@@ -126,82 +206,6 @@ class CalibrationDataset(Dataset):
     
     def __getitem__(self, idx):
         return self.features[idx], self.labels[idx]
-
-class DiabDataset(Dataset):
-    def __init__(self, 
-                 fn_csv: str, 
-                 feat_names: List[str], 
-                 label_name="T2D", 
-                 soft_label=True, 
-                 soft_label_alpha=SOFT_LABEL_ALPHA,
-                 device='cuda'):
-        dt = pd.read_csv(fn_csv)
-        _check_parents_diag(feat_names)
-        self.feat_names = feat_names
-        self.n_feat = _len_encoding(feat_names)
-         
-        # soft label gives values greater than 0 to younger negatives (uncertainty)
-        if soft_label:
-            self.labels = self._soft_negative_label_adjusted_by_age(
-                dt["AGE"].values, 
-                dt[label_name].values, 
-                alpha=soft_label_alpha)
-            # self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
-        else:
-            self.labels = dt[label_name].values
-        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1).to(device)
-            
-        self.raw_values = dt[feat_names].values
-        self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
-
-    @staticmethod
-    def _soft_negative_label_adjusted_by_age(ages: np.array, labels: np.array, alpha: float) -> np.array:
-        soft_labels = np.zeros(len(labels))
-        for (i,age) in enumerate(ages):
-            if labels[i] == 1:
-                soft_labels[i] = 1
-            else:
-                if age < 20:
-                    soft_labels[i] = alpha # 0.1 or 0.25
-                elif age > 80: 
-                    soft_labels[i] = 0    
-                else: 
-                    soft_labels[i] = alpha * (1 - (age-20)/(80-20))
-        return soft_labels
-
-    @staticmethod
-    def _soft_label(labels: np.array, alpha: float) -> np.array:
-        soft_labels = np.abs(labels-alpha)
-        # soft_labels = np.maximum(labels, alpha)
-        return soft_labels
-        
-    def __len__(self):
-        return len(self.labels)
-    
-    def __getitem__(self, idx):
-        return self.features[idx], self.labels[idx]
-
-
-    # def randomize_age(self, idx):
-    #     true_age = self.features[idx][0,-1]
-    #     if self.labels[idx] == 1:
-    #         if true_age > 70:
-    #             age = true_age
-    #         else:
-    #             age = np.random.randint(true_age, 70+1)
-    #         # age = true_age + np.abs(np.random.normal(0, 3))
-    #     else:
-    #         if true_age < 30:
-    #             age = true_age
-    #         else: 
-    #             age = np.random.randint(30, true_age+1)
-    #         # age = true_age - np.abs(np.random.normal(0, 3))
-        
-    #     for i in range(self.n_feat):
-    #         if self.feat_names[i] == "AGE":
-    #             self.features[idx][0,i] = age
-
-
 
 
 if __name__ == "__main__":
@@ -224,7 +228,7 @@ if __name__ == "__main__":
     #         features.append("fa_t2d")
             
     #     return features
-
+    
     features = get_feature_names(DATASET, BMI=False)[991:]
     # print(features)
     dataset = DiabDataset(DATASET, features, soft_label=True)
@@ -244,3 +248,5 @@ if __name__ == "__main__":
     # print(d[1])
     # print(len(d))
     # print(d[0][0].shape)
+    q: str = 'Hello'
+    q = q + 1

@@ -6,7 +6,7 @@ class LocallyConnected(nn.Module):
 
     Args:
         nn ([type]): [description]
-    """    
+    """
     def __init__(self, in_channels, out_channels, output_size, bias=False):
         super(LocallyConnected, self).__init__()
         self.weight = nn.Parameter(torch.randn(1, out_channels, in_channels, output_size))
@@ -22,14 +22,14 @@ class LocallyConnected(nn.Module):
             out += self.bias
         out = out.squeeze(1)
         return out
-    
+
 class LocallyConnected2(nn.Module):
     """LocallyConnected2 Layer generates a NONlinear representation for each SNP...
     The diference between LC and LC2 is that LC2 has a tanh activation.
 
     Args:
         nn ([type]): [description]
-    """    
+    """
     def __init__(self, in_channels, out_channels, output_size, bias=False):
         super(LocallyConnected2, self).__init__()
         self.weight = nn.Parameter(torch.randn(1, out_channels, in_channels, output_size))
@@ -78,8 +78,8 @@ class LocallyConnected3(nn.Module):
 class Model(nn.Module):
     def __init__(self, n_feat, n_hidden_1, n_hidden_2, n_hidden_3, dropout_p0, dropout_p1, dropout_p2, dropout_p3):
         super(Model, self).__init__()
-        # self.lc = LocallyConnected(2, 1, n_feat, bias=False)
-        self.lc = LocallyConnected2(2, 1, n_feat, bias=True)
+        self.lc = LocallyConnected(2, 1, n_feat, bias=False)
+        # self.lc = LocallyConnected2(2, 1, n_feat, bias=True)
         self.l1 = nn.Linear(n_feat, n_hidden_1)
         # self.l2 = nn.Linear(n_hidden_1, n_hidden_2)
         # self.l3 = nn.Linear(n_hidden_2, n_hidden_1)
@@ -109,7 +109,7 @@ class Model(nn.Module):
         # out = self.l2(out)
         # out = self.act(out)
         # out = self.drop2(out)
-        
+
         # out = self.l3(out)
         # out = self.drop3(out)
         # out = self.act(out)
@@ -135,3 +135,5 @@ def load(filename: str):
 
 if __name__ == "__main__":
     f = torch.zeros(2,3,4)
+    q: str = 'Hello'
+    q = q + 1

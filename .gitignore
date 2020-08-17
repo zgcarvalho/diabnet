@@ -1,7 +1,9 @@
+*.pyc
+*.pyo
 datasets/*
 notebooks/*
 log*
 tmp*
 worklog-pt
-diabnet/__pycache__/*
 Untitled.ipynb
+.ipynb_checkpoints/*
