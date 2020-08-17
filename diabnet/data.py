@@ -98,7 +98,7 @@ class DiabDataset(Dataset):
     def __init__(self, 
                  fn_csv: str, 
                  feat_names: List[str], 
-                 label_name="T1D", 
+                 label_name="T2D", 
                  soft_label=True, 
                  soft_label_alpha=SOFT_LABEL_ALPHA,
                  device='cuda'):
