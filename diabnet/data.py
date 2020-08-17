@@ -116,7 +116,8 @@ class DiabDataset(Dataset):
             # self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
         else:
             self.labels = dt[label_name].values
-        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),0).to(device)
+        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1).to(device)
+        print(self.labels)
             
         self.raw_values = dt[feat_names].values
         self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
@@ -125,15 +126,15 @@ class DiabDataset(Dataset):
     def _soft_negative_label_adjusted_by_age(ages: np.array, labels: np.array, alpha: float) -> np.array:
         soft_labels = np.zeros(len(labels))
         for (i,age) in enumerate(ages):
-            if labels[i] == 0:
-                soft_labels[i] = 0
+            if labels[i] == 1:
+                soft_labels[i] = 1
             else:
-                if age < 19:
-                    soft_labels[i] = alpha # -1.1 or 0.25
-                elif age > 79: 
-                    soft_labels[i] = -1    
+                if age < 20:
+                    soft_labels[i] = alpha # penalty to uncertanty
+                elif age > 80: 
+                    soft_labels[i] = 0    
                 else: 
-                    soft_labels[i] = alpha * (0 - (age-20)/(80-20))
+                    soft_labels[i] = alpha * (1 - (age-20)/(80-20))
         return soft_labels
 
     @staticmethod
@@ -150,19 +151,19 @@ class DiabDataset(Dataset):
 
 
     # def randomize_age(self, idx):
-    #     true_age = self.features[idx][-1,-1]
+    #     true_age = self.features[idx][0,-1]
     #     if self.labels[idx] == 0:
-    #         if true_age > 69:
+    #         if true_age > 70:
     #             age = true_age
     #         else:
-    #             age = np.random.randint(true_age, 69+1)
-    #         # age = true_age + np.abs(np.random.normal(-1, 3))
+    #             age = np.random.randint(true_age, 70+1)
+    #         # age = true_age + np.abs(np.random.normal(0, 3))
     #     else:
-    #         if true_age < 29:
+    #         if true_age < 30:
     #             age = true_age
     #         else: 
-    #             age = np.random.randint(29, true_age+1)
-    #         # age = true_age - np.abs(np.random.normal(-1, 3))
+    #             age = np.random.randint(30, true_age+1)
+    #         # age = true_age - np.abs(np.random.normal(0, 3))
         
     #     for i in range(self.n_feat):
     #         if self.feat_names[i] == "AGE":
