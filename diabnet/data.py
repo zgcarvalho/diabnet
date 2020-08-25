@@ -16,7 +16,7 @@ def get_feature_names(fn: str, BMI=False, sex=True, parents_diagnostics=True) ->
     if not BMI:
         col_names = np.setdiff1d(col_names, np.array(['BMI']), assume_unique=True)
 
-    features = list(col_names)
+    features: List[str] = list(col_names)
     if sex:
         features.append("sex")
 
@@ -27,7 +27,7 @@ def get_feature_names(fn: str, BMI=False, sex=True, parents_diagnostics=True) ->
     return features
 
 
-def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.array:
+def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.ndarray:
     _check_parents_diag(feat_names)
     m = np.zeros((2, _len_encoding(feat_names)))
     for i in range(len(feat_names)):
@@ -49,22 +49,22 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.array:
             # AND the sequence must be 'mo_t2d' followed by 'fa_t2d' at the two last positions
             m[1,i], m[1,i+1], m[1,i+2] = 1,1,1
             if feat_values[i] == 0:
-                m[0,i] = 2 # keep feat in the range [0,2]
+                m[0,i] = 1 # keep feat in the range [0,2]
             elif feat_values[i] == 1:
-                m[0,i+1] = 2
+                m[0,i+1] = 1
             else:
-                m[0,i+2] = 2
+                m[0,i+2] = 1
         elif (feat_names[i] == "fa_t2d"):
             # ! this is HIGHLY depedent of '_fix_parents_feat' and the presence of 'mo_t2d'
             # if parent diagnosis are included in features both must be present simultaneously 'mo_t2d' and 'fa_t2d' 
             # AND the sequence must be 'mo_t2d' followed by 'fa_t2d' at the two last positions
             m[1,i+2], m[1,i+3], m[1,i+4] = 1,1,1
             if feat_values[i] == 0:
-                m[0,i+2] = 2
+                m[0,i+2] = 1
             elif feat_values[i] == 1:
-                m[0,i+3] = 2
+                m[0,i+3] = 1
             else:
-                m[0,i+4] = 2
+                m[0,i+4] = 1
         elif (feat_names[i][:3] == "snp"): 
             if feat_values[i] == 0:
                 m[0,i] = 2
@@ -116,14 +116,12 @@ class DiabDataset(Dataset):
             # self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
         else:
             self.labels = dt[label_name].values
-        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1).to(device)
-        print(self.labels)
-            
+        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1).to(device)            
         self.raw_values = dt[feat_names].values
         self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
 
     @staticmethod
-    def _soft_negative_label_adjusted_by_age(ages: np.array, labels: np.array, alpha: float) -> np.array:
+    def _soft_negative_label_adjusted_by_age(ages: np.ndarray, labels: np.ndarray, alpha: float) -> np.ndarray:
         soft_labels = np.zeros(len(labels))
         for (i,age) in enumerate(ages):
             if labels[i] == 1:
@@ -138,7 +136,7 @@ class DiabDataset(Dataset):
         return soft_labels
 
     @staticmethod
-    def _soft_label(labels: np.array, alpha: float) -> np.array:
+    def _soft_label(labels: np.ndarray, alpha: float) -> np.ndarray:
         soft_labels = np.abs(labels-alpha)
         # soft_labels = np.maximum(labels, alpha)
         return soft_labels
@@ -170,43 +168,43 @@ class DiabDataset(Dataset):
     #             self.features[idx][0,i] = age
 
 
-class CalibrationDataset(Dataset):
-    def __init__(self,
-                 fn_csv: str,
-                 feat_names: List[str],
-                 balance=True,
-                 label_name="T2D",
-                 age_cutoff=60,
-                 device='cuda'):
+# class CalibrationDataset(Dataset):
+#     def __init__(self,
+#                  fn_csv: str,
+#                  feat_names: List[str],
+#                  balance=True,
+#                  label_name="T2D",
+#                  age_cutoff=60,
+#                  device='cuda'):
 
-        dt = pd.read_csv(fn_csv)
-        dt = dt[dt['AGE'] >= age_cutoff]
-        if balance:
-            dt = self.balance_df(dt)
-        _check_parents_diag(feat_names)
-        self.feat_names = feat_names
-        self.n_feat = _len_encoding(feat_names)
+#         dt = pd.read_csv(fn_csv)
+#         dt = dt[dt['AGE'] >= age_cutoff]
+#         if balance:
+#             dt = self.balance_df(dt)
+#         _check_parents_diag(feat_names)
+#         self.feat_names = feat_names
+#         self.n_feat = _len_encoding(feat_names)
          
 
-        self.labels = dt[label_name].values
-        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float), 1).to(device)
+#         self.labels = dt[label_name].values
+#         self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float), 1).to(device)
             
-        self.raw_values = dt[feat_names].values
-        self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
+#         self.raw_values = dt[feat_names].values
+#         self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
 
-    @staticmethod
-    def balance_df(df: pd.DataFrame) -> pd.DataFrame:
-        # print(df)
-        g = df.groupby(['T2D'])
-        g = g.apply(lambda x: x.sample(g.size().min()))
-        # print(g)
-        return g
+#     @staticmethod
+#     def balance_df(df: pd.DataFrame) -> pd.DataFrame:
+#         # print(df)
+#         g = df.groupby(['T2D'])
+#         g = g.apply(lambda x: x.sample(g.size().min()))
+#         # print(g)
+#         return g
         
-    def __len__(self):
-        return len(self.labels)
+#     def __len__(self):
+#         return len(self.labels)
     
-    def __getitem__(self, idx):
-        return self.features[idx], self.labels[idx]
+#     def __getitem__(self, idx):
+#         return self.features[idx], self.labels[idx]
 
 
 if __name__ == "__main__":
@@ -249,5 +247,3 @@ if __name__ == "__main__":
     # print(d[1])
     # print(len(d))
     # print(d[0][0].shape)
-    q: str = 'Hello'
-    q = q + 1

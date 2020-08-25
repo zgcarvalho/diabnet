@@ -1,19 +1,42 @@
 import torch
 from torch import nn
+import typing
+
 
 class LocallyConnected(nn.Module):
-    """LocallyConnected Layer generates a linear representation for each SNP...
+    """LocallyConnected Layer generates a linear representation for each column from the 
+    input matrix. 
+    
+    In columns that contain SNP information the first line have the number of
+    dominant alleles and the second the number of recessive alleles. More information about
+    this and other features in 'data.py'.
+     
+    Default option are not use bias if no activation is used. Without activation function, 
+    the values encoded are linear, so an hetero SNP will have the mean value between both homo
+    SNPs. With activation funtion, there is no linearity and the hetero SNP could have any value
+    between the values of both homo SNPs but not greater or smaller than both of them. This
+    characteristic resembles genetic effects like dominance. However may be necessary more data
+    to acquiry a good parametrization because some SNPs are very rare and homo recessive individuals
+    are difficult to observed.  
 
     Args:
-        nn ([type]): [description]
+        output_size (int): number of values after lc layer. This number must be the same as the 
+        number of columns in the input matrix (n_feat)
+        bias (bool): use bias (default: False)
+        activation (bool): use activation function tanh (default: False)
     """
-    def __init__(self, in_channels, out_channels, output_size, bias=False):
+    def __init__(self, output_size: int, bias=False, activation=False):
         super(LocallyConnected, self).__init__()
+        in_channels = 2 # number of inputs for each lc neuron
+        out_channels = 1 # number of outpus for each lc neuron
+        
         self.weight = nn.Parameter(torch.randn(1, out_channels, in_channels, output_size))
         if bias:
             self.bias = nn.Parameter(torch.randn(1, out_channels, output_size))
         else:
             self.register_parameter('bias', None)
+        self.activation = activation
+
 
 
     def forward(self, x):
@@ -21,111 +44,32 @@ class LocallyConnected(nn.Module):
         if self.bias is not None:
             out += self.bias
         out = out.squeeze(1)
+        if self.activation:
+            out = torch.tanh(out)
         return out
 
-class LocallyConnected2(nn.Module):
-    """LocallyConnected2 Layer generates a NONlinear representation for each SNP...
-    The diference between LC and LC2 is that LC2 has a tanh activation.
-
-    Args:
-        nn ([type]): [description]
-    """
-    def __init__(self, in_channels, out_channels, output_size, bias=False):
-        super(LocallyConnected2, self).__init__()
-        self.weight = nn.Parameter(torch.randn(1, out_channels, in_channels, output_size))
-        if bias:
-            self.bias = nn.Parameter(torch.randn(1, out_channels, output_size))
-        else:
-            self.register_parameter('bias', None)
-
-
-    def forward(self, x):
-        out = (x.unsqueeze(1) * self.weight).sum(2)
-        if self.bias is not None:
-            out += self.bias
-        out = out.squeeze(1)
-        out = torch.tanh(out)
-        return out
-
-class LocallyConnected3(nn.Module):
-    """LocallyConnected3 Layer generates a NONlinear representation for each SNP...
-    The diference between LC3 and LC/LC2 is that LC3 has a hidden layer with tanh 
-    activation functions.
-
-    Args:
-        nn ([type]): [description]
-    """
-    def __init__(self, in_channels, out_channels, output_size, bias=False):
-        super(LocallyConnected3, self).__init__()
-        self.w1 = nn.Parameter(torch.randn(1, in_channels, in_channels, output_size))
-        self.w2 = nn.Parameter(torch.randn(1, out_channels, in_channels, output_size))
-        if bias:
-            self.bias = nn.Parameter(torch.randn(1, out_channels, output_size))
-        else:
-            self.register_parameter('bias', None)
-
-
-    def forward(self, x):
-        out = (x.unsqueeze(1) * self.w1).sum(1)
-        out = torch.tanh(out)
-        out = (out.unsqueeze(1) * self.w2).sum(2)
-        if self.bias is not None:
-            out += self.bias
-        out = out.squeeze(1)
-        out = torch.tanh(out)
-        return out
 
 class Model(nn.Module):
-    def __init__(self, n_feat, n_hidden_1, n_hidden_2, n_hidden_3, dropout_p0, dropout_p1, dropout_p2, dropout_p3):
+    def __init__(self, n_feat, n_hidden, dropout_p):
         super(Model, self).__init__()
-        self.lc = LocallyConnected(2, 1, n_feat, bias=False)
-        # self.lc = LocallyConnected2(2, 1, n_feat, bias=True)
-        self.l1 = nn.Linear(n_feat, n_hidden_1)
-        # self.l2 = nn.Linear(n_hidden_1, n_hidden_2)
-        # self.l3 = nn.Linear(n_hidden_2, n_hidden_1)
-        self.exit = nn.Linear(n_hidden_1, 1)
-        p0 = dropout_p0
-        self.drop0 = nn.Dropout(p=p0)
-        p1 = dropout_p1
-        self.drop1 = nn.Dropout(p=p1)
-        # p2 = dropout_p2
-        # self.drop2 = nn.Dropout(p=p2)
-        # p3 = dropout_p3
-        # self.drop3 = nn.Dropout(p=p3)
+        self.lc = LocallyConnected(n_feat, bias=False, activation=False)
+        self.dropout = nn.Dropout(p=dropout_p)
+        self.fc = nn.Linear(n_feat, n_hidden)
+        self.bn = nn.BatchNorm1d(n_hidden)
         self.act = nn.Softplus()
-        self.bn = nn.BatchNorm1d(n_hidden_1)
-
-
+        self.exit = nn.Linear(n_hidden, 1)   
+        
+        
     def forward(self, x):
         out = self.lc(x)
-        # out = self.bn(out)
-        out = self.drop0(out)
-        # out = self.act(out)
-        out = self.l1(out)
+        out = self.dropout(out)
+        out = self.fc(out)
         out = self.bn(out)
         out = self.act(out)
-        
-        out = self.drop1(out)
-        # out = self.l2(out)
-        # out = self.act(out)
-        # out = self.drop2(out)
-
-        # out = self.l3(out)
-        # out = self.drop3(out)
-        # out = self.act(out)
-
-        # inp = self.act(out)
-        # inp = self.l2(inp)
-        # inp = self.act(inp)
-        # inp = self.drop2(inp)
-        # inp = self.l3(inp)
-        # out = out + inp
-        # out = self.drop1(out)
-        # out = self.act(out)
-
         out = self.exit(out)
 
         return out
+
 
 def load(filename: str):
     net = torch.load(filename, map_location='cpu')

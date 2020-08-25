@@ -4,7 +4,7 @@ from diabnet.optim import RAdam
 from diabnet.calibration import ece_mce
 from torch.utils.data import DataLoader, random_split
 from torch.nn import BCEWithLogitsLoss
-from torch.optim import Adam
+from torch.optim import Adam, SGD, AdamW
 import torch
 import numpy as np
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, roc_auc_score
@@ -13,8 +13,21 @@ import datetime
 import math
 # import torch
 # from torch.optim.optimizer import Optimizer, required
+from typing import Dict, Any
 
-def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_trial=False, device='cuda'):
+def l1_l2_regularization(lc_params, lambda1_dim1, lambda2_dim1, lambda1_dim2, lambda2_dim2):
+    l1_regularization_dim1 = lambda2_dim1*torch.sum(torch.norm(lc_params,1, dim=1)) 
+    l2_regularization_dim1 = (1.0-lambda2_dim1)/2.0*torch.sum(torch.norm(lc_params,2, dim=1))
+    l1_regularization_dim2 = lambda2_dim2*torch.sum(torch.norm(lc_params,1, dim=2))
+    l2_regularization_dim2 = (1.0-lambda2_dim2)/2.0*torch.sum(torch.norm(lc_params,2, dim=2))
+    
+    dim1_loss = lambda1_dim1 * (l1_regularization_dim1 + l2_regularization_dim1)
+    dim2_loss = lambda1_dim2 * (l1_regularization_dim2 + l2_regularization_dim2)
+    
+    return dim1_loss + dim2_loss
+        
+
+def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_save_model="", is_trial=False, device='cuda'):
     device=torch.device(device)
 
     trainloader = DataLoader(training_set, batch_size=params["batch_size"], shuffle=True)
@@ -23,22 +36,16 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
     valloader = DataLoader(validation_set, batch_size=len(validation_set), shuffle=False)
 
     # print("Number of features", training_set.dataset.n_feat)
-    model = Model(
-        training_set.dataset.n_feat, 
-        params["l1_neurons"], 
-        params["l2_neurons"], 
-        params["l3_neurons"], 
-        params["dp0"], 
-        params["dp1"], 
-        params["dp2"], 
-        params["dp3"])
+    model = Model(training_set.dataset.n_feat, params["hidden_neurons"], params["dropout"])
     model.to(device)
 
     loss_func = BCEWithLogitsLoss()
     loss_func.to(device)
 
     # optimization
-    optimizer = RAdam(model.parameters(), lr=params["lr"])
+    # optimizer = RAdam(model.parameters(), lr=params["lr"])
+    optimizer = AdamW(model.parameters(), lr=params["lr"])
+    # optimizer = SGD(model.parameters(), lr=params["lr"], momentum=0.9)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.5, last_epoch=-1)
 
 
@@ -59,19 +66,11 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
             x, y_true = sample
             y_pred = model(x.to(device))
             loss = loss_func(y_pred, y_true.to(device))
-
-            # elastic net regularization
-            lc_params = model.lc.weight
-            # lc_params = model.lc.w1
-            l1_regularization_dim1 = lambda2_dim1*torch.sum(torch.norm(lc_params,1, dim=1))
-            l2_regularization_dim1 = (1.0-lambda2_dim1)/2.0*torch.sum(torch.norm(lc_params,2, dim=1))
-            l1_regularization_dim2 = lambda2_dim2*torch.sum(torch.norm(lc_params,1, dim=2))
-            l2_regularization_dim2 = (1.0-lambda2_dim2)/2.0*torch.sum(torch.norm(lc_params,2, dim=2))
             
-            dim1_loss = lambda1_dim1 * (l1_regularization_dim1 + l2_regularization_dim1)
-            dim2_loss = lambda1_dim2 * (l1_regularization_dim2 + l2_regularization_dim2)
-
-            loss_reg = loss + dim1_loss + dim2_loss
+            # l1 and l2 regularization at LC layer
+            loss_reg = loss + l1_l2_regularization(model.lc.weight, lambda1_dim1, lambda2_dim1, lambda1_dim2, lambda2_dim2)
+            
+            # flood regularization
             flood = (loss_reg - flood_penalty).abs() + flood_penalty
 
             optimizer.zero_grad()
@@ -86,48 +85,60 @@ def train(params, training_set, validation_set, epochs, fn_to_save_model="", is_
         training_loss /= n_batchs
         training_loss_reg /= n_batchs
 
+        # don't print epoch loss during hyperparameter optimizations
         if not is_trial:
-            # print only the loss of the last batch of each epoch
-            print("lreg DIM 1", dim1_loss)
-            print("lreg DIM 2", dim2_loss)
             print("T epoch {}, loss {}, loss_with_regularization {}".format(e, training_loss, training_loss_reg))
 
 
-        validation_loss = 0.0
-        cm = np.zeros((2,2))
-        n_batchs = 0
+        # validation_loss = 0.0
+        # cm = np.zeros((2,2))
+        # n_batchs = 0
 
         model.eval() #! THIS MUST BE UNCOMMENTED USING BN BUT COMMENTED TO MC-DROPOUT
 
-        repetitions = 1
-        for s in range(repetitions):   # when mcdropout is not used this loop is unnecessary, so range(1)
-            for i, sample in enumerate(valloader):
-                x, y_true = sample
-                y_pred = model(x.to(device))
+        # repetitions = 1
+        # for s in range(repetitions):   # when mcdropout is not used this loop is unnecessary, so range(1)
+            
+        for i, sample in enumerate(valloader):
+            x, y_true = sample
+            y_pred = model(x.to(device))
 
-                loss = loss_func(y_pred, y_true.to(device))
+            loss = loss_func(y_pred, y_true.to(device))
+            
+            # ece and mce are calibration metrics
+            ece, mce = ece_mce(y_pred, y_true)
+            # ece, mce = ece.item(), mce.item()
+            
+            # print(f'Epoch {e} ECE {ece.item()} MCE {mce.item()}')
+
+
+            t = y_true.cpu().detach().numpy()
+            p = torch.sigmoid(y_pred).cpu().detach().numpy()
+            t_b = t > 0.5
+            p_b = p > 0.5
+            cm = confusion_matrix(t_b, p_b)
+            acc = accuracy_score(t_b, p_b)
+            bacc = balanced_accuracy_score(t_b, p_b)
+            auroc = roc_auc_score(t_b, p)
+            
+        #         t = y_true.gt(0.5).cpu().detach().numpy()
+        #         p = y_pred.gt(0).cpu().detach().numpy()
+        #         cm += np.array(confusion_matrix(t > 0.5, p > 0.5))
+
+        #         validation_loss += loss.item()
                 
-                ece, mce = ece_mce(y_pred, y_true)
-                
-                # print(f'Epoch {e} ECE {ece.item()} MCE {mce.item()}')
-
-                t = y_true.gt(0.5).cpu().detach().numpy()
-                p = y_pred.gt(0).cpu().detach().numpy()
-                cm += np.array(confusion_matrix(t, p))
-
-                validation_loss += loss.item()
-                
-                n_batchs += 1 
+        #         n_batchs += 1 
 
 
-        validation_loss /= n_batchs # 30 because we are using 30 samples "for...range(30)"
-        validation_acc = np.sum(np.diag(cm)) / cm.sum()
-        validation_bacc = np.mean(np.diag(cm) / cm.sum(axis=1))
+        # validation_loss /= n_batchs # 30 because we are using 30 samples "for...range(30)"
+        # validation_acc = np.sum(np.diag(cm)) / cm.sum()
+        # validation_bacc = np.mean(np.diag(cm) / cm.sum(axis=1))
 
         if not is_trial:
-            print("V epoch {}, loss {}, acc {}, bacc {}".format(e, validation_loss, validation_acc, validation_bacc))
+            print(f"V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}")
+            # print("V epoch {}, loss {}, acc {}, bacc {}, ece {}, mce {}".format(e, validation_loss, validation_acc, validation_bacc, ece.item(), mce.item()))
             print("line is true, column is pred")
-            print(cm/repetitions)
+            print(cm)
 
         scheduler.step()
 

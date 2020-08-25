@@ -1,4 +1,5 @@
 {
     "python.pythonPath": "/home/zgcarvalho/anaconda3/bin/python",
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "FSharp.suggestGitignore": false
 }

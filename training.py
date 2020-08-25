@@ -10,23 +10,36 @@ def net(fn_dataset):
         # start_time = default_timer()
         print(f"Model {i:03}")
         params = {
-            "l1_neurons": 3, #13
-            "l2_neurons": 0,
-            "l3_neurons": 0,
-            "dp0": 0.4,
-            "dp1": 0.0, # 0.5
-            "dp2": 0,
-            "dp3": 0,
+            "hidden_neurons": 3, #13
+            "dropout": 0.4,
             "lr": 0.004,
             "wd": 0.000001,
-            "lambda1_dim1": 0.0000,
-            "lambda2_dim1": 0.0000,
-            "lambda1_dim2": 0.0000,
+            "lambda1_dim1": 0.00000,
+            "lambda2_dim1": 0.00000,
+            "lambda1_dim2": 0.00001,
             "lambda2_dim2": 0.00025,
             "flood_penalty": 0.05, #0.39
             "soft_label_alpha": 0.09,
             "batch_size": 256
         }
+        # params = {
+        #     "l1_neurons": 3, #13
+        #     "l2_neurons": 0,
+        #     "l3_neurons": 0,
+        #     "dp0": 0.4,
+        #     "dp1": 0.0, # 0.5
+        #     "dp2": 0,
+        #     "dp3": 0,
+        #     "lr": 0.004,
+        #     "wd": 0.000001,
+        #     "lambda1_dim1": 0.0000,
+        #     "lambda2_dim1": 0.0000,
+        #     "lambda1_dim2": 0.0000,
+        #     "lambda2_dim2": 0.00025,
+        #     "flood_penalty": 0.05, #0.39
+        #     "soft_label_alpha": 0.09,
+        #     "batch_size": 256
+        # }
 
         epochs = 2500
 
