@@ -144,9 +144,8 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
 
     if is_trial:
         print("T epoch {}, loss {}, loss_with_regularization {}".format(e, training_loss, training_loss_reg))
-        print("V epoch {}, loss {}, acc {}, bacc {}".format(e, validation_loss, validation_acc, validation_bacc))
-        print(f'Epoch {e} ECE {ece.item()} MCE {mce.item()}')
-        print(cm/repetitions)
+        print(f"V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}")
+        print(cm)
         print(params)
     
 
@@ -158,16 +157,16 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
             f.write("\nModel name: {}\n".format(fn_to_save_model))
             # f.write("\nAccuracy: {}\n".format(np.median(acc_val_list)))
             # f.write("\nBalanced Accuracy: {}\n".format(np.median(bacc_val_list)))
-            f.write("\nConfusion matrix:\n{}\n".format(cm/repetitions))
+            f.write("\nConfusion matrix:\n{}\n".format(cm))
             f.write("\nT Loss: {}\n".format(training_loss))
             f.write("\nT Loss(reg): {}\n".format(training_loss_reg))
-            f.write("\nV Loss: {}\n\n".format(validation_loss))
+            f.write("\nV Loss: {}\n\n".format(loss.item()))
             for k in params:
                 f.write("{} = {}\n".format(k,params[k]))
             f.close()
             
     # return validation_loss
-    return training_loss, validation_loss, validation_acc, validation_bacc
+    return training_loss, loss.item(), acc, bacc
 
 
 
