@@ -14,6 +14,9 @@ import math
 # import torch
 # from torch.optim.optimizer import Optimizer, required
 from typing import Dict, Any
+import pytorch_warmup as warmup
+from torch.optim.swa_utils import AveragedModel, SWALR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 def l1_l2_regularization(lc_params, lambda1_dim1, lambda2_dim1, lambda1_dim2, lambda2_dim2):
     l1_regularization_dim1 = lambda2_dim1*torch.sum(torch.norm(lc_params,1, dim=1)) 
@@ -43,11 +46,23 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
     loss_func.to(device)
 
     # optimization
-    # optimizer = RAdam(model.parameters(), lr=params["lr"])
-    optimizer = AdamW(model.parameters(), lr=params["lr"])
-    # optimizer = SGD(model.parameters(), lr=params["lr"], momentum=0.9)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.5, last_epoch=-1)
-
+    optimizer = RAdam(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"])
+    # optimizer = AdamW(model.parameters(), lr=0.07, eps=1e-7)
+    # optimizer = SGD(model.parameters(), lr=0.5, momentum=0.9, weight_decay=1e-4)
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.3, last_epoch=-1)
+    scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
+    
+    # epochs = 2000
+    
+    # # swa
+    # swa_model = AveragedModel(model)
+    # swa_start = 1000
+    # num_steps = len(trainloader) * epochs
+    # scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
+    # swa_scheduler = SWALR(optimizer, swa_lr=0.05, anneal_epochs=100)
+    
+    # warmup_scheduler = warmup.UntunedLinearWarmup(optimizer)
+    
 
     # lambda to L1 regularization at LC layer
     lambda1_dim1 = params["lambda1_dim1"]
@@ -77,10 +92,28 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
             # loss_reg.backward()
             flood.backward()
             optimizer.step()
+            
+            # scheduler.step(scheduler.last_epoch+1)
+            # warmup_scheduler.dampen()
 
             training_loss += loss.item()
             training_loss_reg += loss_reg.item()
             n_batchs += 1
+            
+            
+            
+        # if e > swa_start:
+        #     swa_model.update_parameters(model)
+        #     swa_scheduler.step()
+        #     print('SWA Epoch:', e,'LR:', swa_scheduler.get_last_lr())
+        # else:
+        #     scheduler.step()
+        #     print('Epoch:', e,'LR:', scheduler.get_last_lr())
+                
+        scheduler.step()
+        # print('Epoch:', e,'LR:', scheduler.get_last_lr())
+        
+            
 
         training_loss /= n_batchs
         training_loss_reg /= n_batchs
@@ -102,8 +135,10 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
         for i, sample in enumerate(valloader):
             x, y_true = sample
             y_pred = model(x.to(device))
+            # y_pred_swa = swa_model(x.to(device))
 
             loss = loss_func(y_pred, y_true.to(device))
+            # loss_swa = loss_func(y_pred_swa, y_true.to(device))
             
             # ece and mce are calibration metrics
             ece, mce = ece_mce(y_pred, y_true)
@@ -136,11 +171,14 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
 
         if not is_trial:
             print(f"V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}")
+            # print(f"V epoch {e}, loss {loss.item()}, loss_swa {loss_swa.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}")
+            # print(f"V SWA epoch {e}, loss {loss_swa.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}")
             # print("V epoch {}, loss {}, acc {}, bacc {}, ece {}, mce {}".format(e, validation_loss, validation_acc, validation_bacc, ece.item(), mce.item()))
             print("line is true, column is pred")
             print(cm)
 
-        scheduler.step()
+        # torch.optim.swa_utils.update_bn(trainloader, swa_model)
+
 
     if is_trial:
         print("T epoch {}, loss {}, loss_with_regularization {}".format(e, training_loss, training_loss_reg))
@@ -166,7 +204,7 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
             f.close()
             
     # return validation_loss
-    return training_loss, loss.item(), acc, bacc
+    return training_loss, loss.item(), acc, bacc, ece.item(), mce.item(), auroc
 
 
 

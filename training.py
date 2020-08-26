@@ -13,6 +13,9 @@ def net(fn_dataset):
             "hidden_neurons": 3, #13
             "dropout": 0.4,
             "lr": 0.004,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "eps": 1e-7,
             "wd": 0.000001,
             "lambda1_dim1": 0.00000,
             "lambda2_dim1": 0.00000,
@@ -51,7 +54,7 @@ def net(fn_dataset):
         len_trainset = int(0.9*len(dataset))
         trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
 
-        fn_out = f"diabnet/models/model-3-soft-label-age-positives-2500-dropout0-bn-decay-flood-hyperopt-batch256-lc1-bias-{i:03}.pth"
+        fn_out = f"diabnet/models/model-3-soft-label-age-positives-2500-dropout0-bn-decay-flood-hyperopt-batch256-lc1-bias-swa-{i:03}.pth"
         print("model saved to:", fn_out)
         train(params, trainset, valset, epochs, fn_out, device='cuda', is_trial=False)
         # end_time = default_timer()
