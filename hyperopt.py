@@ -20,7 +20,7 @@ def objective(trial):
         "lr": trial.suggest_loguniform('lr', 0.0007, 0.07),
         "beta1": 1.0 - trial.suggest_loguniform('beta1', 1e-5, 1e-1),
         "beta2": 1.0 - trial.suggest_loguniform('beta2', 1e-5, 1e-1),
-        "eps": trial.suggest_loguniform('eps', 1e-8, 1e-1),
+        "eps": trial.suggest_loguniform('eps', 1e-10, 1e-1),
         "wd": 0.000001,
         "lambda1_dim1": trial.suggest_loguniform('lambda1_dim1', 1e-10, 1e-1),
         "lambda2_dim1": trial.suggest_loguniform('lambda2_dim1', 1e-10, 1e-1),
@@ -50,7 +50,7 @@ def objective(trial):
         # "flood_penalty":trial.suggest_uniform('flood_penalty', 0.0, 0.20),
         # "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.20)
     }
-    epochs = 2500
+    epochs = 500
 
     global POSITIVE_TRAINSET
     global RANDOM_TRAINSET
