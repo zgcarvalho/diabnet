@@ -15,18 +15,18 @@ def get_trainset(fn, soft_label_alpha):
 
 def objective(trial):
     params = {
-        "hidden_neurons": trial.suggest_int('hidden_neurons', 3,13), #13
+        "hidden_neurons": trial.suggest_int('hidden_neurons', 3, 7), #13
         "dropout": trial.suggest_uniform('dropout', 0.45, 0.7),
-        "lr": trial.suggest_loguniform('lr', 0.0007, 0.07),
-        "beta1": 1.0 - trial.suggest_loguniform('beta1', 1e-5, 1e-1),
-        "beta2": 1.0 - trial.suggest_loguniform('beta2', 1e-5, 1e-1),
-        "eps": trial.suggest_loguniform('eps', 1e-10, 1e-1),
-        "wd": 0.000001,
-        "lambda1_dim1": trial.suggest_loguniform('lambda1_dim1', 1e-10, 1e-1),
-        "lambda2_dim1": trial.suggest_loguniform('lambda2_dim1', 1e-10, 1e-1),
-        "lambda1_dim2": trial.suggest_loguniform('lambda1_dim2', 1e-10, 1e-1),
-        "lambda2_dim2": trial.suggest_loguniform('lambda2_dim2', 1e-10, 1e-1),
-        "flood_penalty": trial.suggest_uniform('flood_penalty', 0.0, 0.20), #0.39
+        "lr": trial.suggest_loguniform('lr', 0.007, 0.03),
+        "beta1": 1.0 - trial.suggest_loguniform('beta1', 1e-6, 1e-2),
+        "beta2": 1.0 - trial.suggest_loguniform('beta2', 1e-7, 10e-3),
+        "eps": trial.suggest_loguniform('eps', 1e-7, 1e-3),
+        "wd": trial.suggest_loguniform('wd', 1e-8, 1e-4),
+        "lambda1_dim1": trial.suggest_loguniform('lambda1_dim1', 1e-7, 1e-5),
+        "lambda2_dim1": trial.suggest_loguniform('lambda2_dim1', 1e-8, 1e-6),
+        "lambda1_dim2": trial.suggest_loguniform('lambda1_dim2', 1e-7, 1e-3),
+        "lambda2_dim2": trial.suggest_loguniform('lambda2_dim2', 1e-8, 1e-4),
+        "flood_penalty": trial.suggest_uniform('flood_penalty', 0.0, 0.05), #0.39
         "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.20),
         "batch_size": 256
         
@@ -50,7 +50,7 @@ def objective(trial):
         # "flood_penalty":trial.suggest_uniform('flood_penalty', 0.0, 0.20),
         # "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.20)
     }
-    epochs = 500
+    epochs = 2500
 
     global POSITIVE_TRAINSET
     global RANDOM_TRAINSET
@@ -85,8 +85,8 @@ def objective(trial):
 
 
 if __name__ == "__main__":
-    study = optuna.create_study(study_name='radam', direction='minimize', storage='sqlite:///hyperopt_batch256_round0.db', load_if_exists=True)
-    study.optimize(objective, n_trials=1000)
+    study = optuna.create_study(study_name='radam', direction='minimize', storage='sqlite:///hyperopt_batch256_round1.db', load_if_exists=True)
+    study.optimize(objective, n_trials=3000)
     
     print("Number of finished trials: {}".format(len(study.trials)))
 
