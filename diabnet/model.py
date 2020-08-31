@@ -54,7 +54,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.lc = LocallyConnected(n_feat, bias=False, activation=False)
         self.dropout = nn.Dropout(p=dropout_p)
-        self.fc = nn.Linear(n_feat, n_hidden)
+        self.fc = nn.Linear(n_feat, n_hidden, bias=False)
         self.bn = nn.BatchNorm1d(n_hidden)
         self.act = nn.Softplus()
         self.exit = nn.Linear(n_hidden, 1)   
