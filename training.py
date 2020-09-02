@@ -50,3 +50,4 @@ if __name__ == "__main__":
     net('./datasets/visits_sp_unique_train_positivo_1000_random_0.csv')
     # net('./datasets/visits_sp_unique_train_positivo_0_random_1000.csv')
     # net('./datasets/visits_sp_unique_train_positivo_0_negatives_1000.csv')
+    # net('./datasets/visits_sp_unique_train_randomized_1_positivo_1000_random_0.csv')
