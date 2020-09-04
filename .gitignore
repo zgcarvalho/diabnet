@@ -9,3 +9,4 @@ worklog-pt
 Untitled*
 .ipynb_checkpoints/*
 trash/*
+*.db
