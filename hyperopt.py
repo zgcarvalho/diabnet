@@ -28,7 +28,7 @@ def objective(trial):
     #     "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.20),
     #     "batch_size": 256
     # }
-    round 1
+    # round 1
     params = {
         "hidden_neurons": 5, #13
         "dropout": 0.55,

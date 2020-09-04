@@ -1,9 +1,10 @@
 *.pyc
 *.pyo
 datasets/*
-notebooks/*
+notebooks/deprecated*
+notebooks/Untitled*
 log*
 tmp*
 worklog-pt
-Untitled.ipynb
+Untitled*
 .ipynb_checkpoints/*
