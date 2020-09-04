@@ -1,0 +1,30 @@
+2020-02-03 14:36:31.633233
+Model name: diabnet/models/teste-sp-soft-label_tmp.pth
+
+Accuracy: 0.8125
+
+Balanced Accuracy: 0.8277777777777778
+
+Confusion matrix:
+[[231.1         60.9       ]
+ [  8.76666667  58.23333333]]
+
+T Loss: 0.45272383093833923
+
+T Loss(reg): 0.8813582211732864
+
+V Loss: 0.5718193054199219
+
+l1_neurons = 256
+l2_neurons = 0
+l3_neurons = 0
+dp0 = 0
+dp1 = 0.5
+dp2 = 0
+dp3 = 0
+lr = 0.0007
+wd = 1e-06
+lambda1_dim1 = 0.0003
+lambda2_dim1 = 0.05
+lambda1_dim2 = 0.0008
+lambda2_dim2 = 0.05

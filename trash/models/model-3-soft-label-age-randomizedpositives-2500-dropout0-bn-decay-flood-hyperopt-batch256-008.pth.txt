@@ -1,0 +1,29 @@
+2020-08-05 11:36:47.471290
+Model name: diabnet/models/model-3-soft-label-age-randomizedpositives-2500-dropout0-bn-decay-flood-hyperopt-batch256-008.pth
+
+Confusion matrix:
+[[116.  16.]
+ [ 35.  13.]]
+
+T Loss: 0.32438574944223675
+
+T Loss(reg): 0.32438574944223675
+
+V Loss: 0.7121542096138
+
+l1_neurons = 3
+l2_neurons = 0
+l3_neurons = 0
+dp0 = 0.4
+dp1 = 0.0
+dp2 = 0
+dp3 = 0
+lr = 0.004
+wd = 1e-06
+lambda1_dim1 = 0.0
+lambda2_dim1 = 0.0
+lambda1_dim2 = 0.0
+lambda2_dim2 = 0.00025
+flood_penalty = 0.05
+soft_label_alpha = 0.09
+batch_size = 256

@@ -1,0 +1,26 @@
+2020-03-31 13:10:15.613578
+Model name: diabnet/models/model-sp-soft-label-negatives-1000-dropout005-decay-013.pth'
+
+Confusion matrix:
+[[104.56666667  26.43333333]
+ [ 37.23333333  11.76666667]]
+
+T Loss: 0.500374686717987
+
+T Loss(reg): 0.7814064979553222
+
+V Loss: 0.7630745510260264
+
+l1_neurons = 128
+l2_neurons = 0
+l3_neurons = 0
+dp0 = 0
+dp1 = 0.05
+dp2 = 0
+dp3 = 0
+lr = 0.0007
+wd = 1e-06
+lambda1_dim1 = 0.0003
+lambda2_dim1 = 0.05
+lambda1_dim2 = 0.0008
+lambda2_dim2 = 0.05

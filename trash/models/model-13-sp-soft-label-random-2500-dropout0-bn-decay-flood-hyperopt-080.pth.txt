@@ -1,0 +1,27 @@
+2020-05-22 19:39:52.468217
+Model name: diabnet/models/model-13-sp-soft-label-random-2500-dropout0-bn-decay-flood-hyperopt-080.pth
+
+Confusion matrix:
+[[2.6 1.9]
+ [0.9 0.6]]
+
+T Loss: 0.43602755665779114
+
+T Loss(reg): 0.43602755665779114
+
+V Loss: 1.3571378389994304
+
+l1_neurons = 13
+l2_neurons = 0
+l3_neurons = 0
+dp0 = 0.45
+dp1 = 0.0
+dp2 = 0
+dp3 = 0
+lr = 0.0045
+wd = 1e-06
+lambda1_dim1 = 0.0
+lambda2_dim1 = 7.5e-05
+lambda1_dim2 = 0.0
+lambda2_dim2 = 5e-05
+flood_penalty = 0.39

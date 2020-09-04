@@ -1,0 +1,26 @@
+2020-02-10 16:49:43.414574
+Model name: diabnet/models/teste-sp-soft-label-positives-1000.pth
+
+Confusion matrix:
+[[258.06666667  26.93333333]
+ [ 24.56666667  49.43333333]]
+
+T Loss: 0.4572695717215538
+
+T Loss(reg): 0.862372487783432
+
+V Loss: 0.5430195468995306
+
+l1_neurons = 256
+l2_neurons = 0
+l3_neurons = 0
+dp0 = 0
+dp1 = 0.5
+dp2 = 0
+dp3 = 0
+lr = 0.0007
+wd = 1e-06
+lambda1_dim1 = 0.0003
+lambda2_dim1 = 0.05
+lambda1_dim2 = 0.0008
+lambda2_dim2 = 0.05

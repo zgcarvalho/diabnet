@@ -1,0 +1,2 @@
+2020-08-25 10:43:45.388060
+Model name: diabnet/models/model-3-soft-label-age-positives-2500-dropout0-bn-decay-flood-hyperopt-batch256-lc1-bias-000.pth

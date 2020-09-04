@@ -1,0 +1,26 @@
+2020-02-10 17:53:34.665164
+Model name: diabnet/models/model-sp-soft-label-random-1000.pth
+
+Confusion matrix:
+[[112.43333333  24.56666667]
+ [ 36.7          6.3       ]]
+
+T Loss: 0.5741798639297485
+
+T Loss(reg): 0.8039253354072571
+
+V Loss: 0.7231694247987536
+
+l1_neurons = 256
+l2_neurons = 0
+l3_neurons = 0
+dp0 = 0
+dp1 = 0.5
+dp2 = 0
+dp3 = 0
+lr = 0.0007
+wd = 1e-06
+lambda1_dim1 = 0.0003
+lambda2_dim1 = 0.05
+lambda1_dim2 = 0.0008
+lambda2_dim2 = 0.05
