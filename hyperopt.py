@@ -14,7 +14,7 @@ def objective(trial):
     # round0
     params = {
         "hidden_neurons": trial.suggest_int('hidden_neurons', 3, 7), #13
-        "dropout": 0.5,
+        "dropout": trial.suggest_uniform('flood_penalty', 0.3, 0.7),
         "lr": trial.suggest_loguniform('lr', 0.001, 0.1),
         "beta1": 0.9,
         "beta2": 0.99,
