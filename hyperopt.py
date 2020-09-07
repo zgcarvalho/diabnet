@@ -24,7 +24,7 @@ def objective(trial):
         "lambda2_dim1": trial.suggest_loguniform('lambda2_dim1', 1e-9, 1e-3),
         "lambda1_dim2": trial.suggest_loguniform('lambda1_dim2', 1e-9, 1e-3),
         "lambda2_dim2": trial.suggest_loguniform('lambda2_dim2', 1e-9, 1e-3),
-        "flood_penalty": trial.suggest_uniform('flood_penalty', 0.0, 0.2), #0.39
+        "flood_penalty": trial.suggest_uniform('flood_penalty', 0.0, 0.4), #0.39
         "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.20),
         "batch_size": 256
     }
