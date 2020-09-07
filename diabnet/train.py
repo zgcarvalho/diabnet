@@ -56,11 +56,10 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
     loss_func.to(device)
 
     # optimization
-    # optimizer = RAdam(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"])
-    optimizer = AdamW(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"])
-    # optimizer = SGD(model.parameters(), lr=0.5, momentum=0.9, weight_decay=1e-4)
-    # scheduler = StepLR(optimizer, step_size=500, gamma=0.5, last_epoch=-1)
-    scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
+    # optimizer = RAdam(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"], weight_decay=params["wd"])
+    optimizer = AdamW(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"], weight_decay=params["wd"])
+    scheduler = StepLR(optimizer, step_size=500, gamma=1/3, last_epoch=-1)
+
     
     
 
