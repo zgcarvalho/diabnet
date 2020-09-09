@@ -10,7 +10,7 @@ def net(fn_dataset):
         # start_time = default_timer()
         print(f"Model {i:03}")
         params = {
-            "hidden_neurons": 3, #13
+            "hidden_neurons": 6, #13
             "dropout": 0.50,
             "lr": 0.03,
             "beta1": 0.9,
@@ -21,8 +21,8 @@ def net(fn_dataset):
             "lambda2_dim1": 5e-06,
             "lambda1_dim2": 0.0, #5e-08,
             "lambda2_dim2": 5e-08,
-            "flood_penalty": 0.0,
-            "soft_label_alpha": 0.1,
+            "flood_penalty": 0.23,
+            "soft_label_alpha": 0.16,
             "batch_size": 256  
         }
         

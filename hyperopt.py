@@ -12,10 +12,27 @@ def get_trainset(fn, soft_label_alpha):
 
 def objective(trial):
     # round0
+    # params = {
+    #    "hidden_neurons": trial.suggest_int('hidden_neurons', 3, 7), #13
+    #    "dropout": trial.suggest_uniform('dropout', 0.3, 0.7),
+    #    "lr": trial.suggest_loguniform('lr', 0.001, 0.1),
+    #    "beta1": 0.9,
+    #    "beta2": 0.99,
+    #    "eps": trial.suggest_loguniform('eps', 1e-8, 1e-3),
+    #    "wd": trial.suggest_loguniform('wd', 1e-7, 1e-2),
+    #    "lambda1_dim1": trial.suggest_loguniform('lambda1_dim1', 1e-9, 1e-3),
+    #    "lambda2_dim1": trial.suggest_loguniform('lambda2_dim1', 1e-9, 1e-3),
+    #    "lambda1_dim2": trial.suggest_loguniform('lambda1_dim2', 1e-9, 1e-3),
+    #    "lambda2_dim2": trial.suggest_loguniform('lambda2_dim2', 1e-9, 1e-3),
+    #    "flood_penalty": trial.suggest_uniform('flood_penalty', 0.0, 0.4), #0.39
+    #    "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.20),
+    #    "batch_size": 256
+    # }
+    # round 1
     params = {
         "hidden_neurons": trial.suggest_int('hidden_neurons', 3, 7), #13
         "dropout": trial.suggest_uniform('dropout', 0.3, 0.7),
-        "lr": trial.suggest_loguniform('lr', 0.001, 0.1),
+        "lr": trial.suggest_loguniform('lr', 0.01, 0.08),
         "beta1": 0.9,
         "beta2": 0.99,
         "eps": trial.suggest_loguniform('eps', 1e-8, 1e-3),
@@ -24,11 +41,11 @@ def objective(trial):
         "lambda2_dim1": trial.suggest_loguniform('lambda2_dim1', 1e-9, 1e-3),
         "lambda1_dim2": trial.suggest_loguniform('lambda1_dim2', 1e-9, 1e-3),
         "lambda2_dim2": trial.suggest_loguniform('lambda2_dim2', 1e-9, 1e-3),
-        "flood_penalty": trial.suggest_uniform('flood_penalty', 0.0, 0.4), #0.39
-        "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.0, 0.20),
+        "flood_penalty": trial.suggest_uniform('flood_penalty', 0.15, 0.3), #0.39
+        "soft_label_alpha": trial.suggest_uniform('soft_label_alpha', 0.1, 0.2),
         "batch_size": 256
     }
-    # round 1
+    # round 2
     # params = {
     #     "hidden_neurons": 3, #13
     #     "dropout": 0.5,
@@ -70,7 +87,7 @@ def objective(trial):
 
 
 if __name__ == "__main__":
-    study = optuna.create_study(study_name='adamw_avg_prec', direction='maximize', storage='sqlite:///hyperopt_batch256_adamw_avg_prec_round0.db', load_if_exists=True)
+    study = optuna.create_study(study_name='adamw_avg_prec', direction='maximize', storage='sqlite:///hyperopt_batch256_adamw_avg_prec_round1.db', load_if_exists=True)
     study.optimize(objective, n_trials=1000)
     
     print("Number of finished trials: {}".format(len(study.trials)))
