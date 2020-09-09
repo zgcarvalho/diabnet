@@ -10,19 +10,19 @@ def net(fn_dataset):
         # start_time = default_timer()
         print(f"Model {i:03}")
         params = {
-            "hidden_neurons": 3, #13
-            "dropout": 0.50,
+            "hidden_neurons": 6, #13
+            "dropout": 0.33,
             "lr": 0.03,
             "beta1": 0.9,
             "beta2": 0.99,
-            "eps": 1e-5,
-            "wd": 1e-2,
-            "lambda1_dim1": 0.0, #5e-07, 
-            "lambda2_dim1": 5e-06,
-            "lambda1_dim2": 0.0, #5e-08,
-            "lambda2_dim2": 5e-08,
-            "flood_penalty": 0.0,
-            "soft_label_alpha": 0.1,
+            "eps": 3e-8,
+            "wd": 1e-3,
+            "lambda1_dim1": 1e-8, #5e-07, 
+            "lambda2_dim1": 1e-6,
+            "lambda1_dim2": 1e-8, #5e-08,
+            "lambda2_dim2": 1e-6,
+            "flood_penalty": 0.23,
+            "soft_label_alpha": 0.16,
             "batch_size": 256  
         }
         
@@ -37,7 +37,7 @@ def net(fn_dataset):
         len_trainset = int(0.9*len(dataset))
         trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
 
-        fn_out = f"diabnet/models/model-3-soft-label-age-positives-1000-dropout0-bn-decay-flood-hyperopt-batch256-adamw-lc1-20200907-{i:03}.pth"
+        fn_out = f"diabnet/models/model-6-soft-label-age-positives-1000-dropout0-bn-decay-flood-hyperopt-batch256-adamw-lc1-20200909-{i:03}.pth"
         print("model saved to:", fn_out)
         train(params, trainset, valset, epochs, fn_out, device='cuda', is_trial=False)
         # end_time = default_timer()
