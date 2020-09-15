@@ -18,16 +18,6 @@ import pytorch_warmup as warmup
 from torch.optim.swa_utils import AveragedModel, SWALR
 from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
 
-# def l1_l2_regularization(lc_params, lambda1_dim1, lambda2_dim1, lambda1_dim2, lambda2_dim2):
-#     l1_regularization_dim1 = lambda2_dim1*torch.sum(torch.norm(lc_params,1, dim=1)) 
-#     l2_regularization_dim1 = (1.0-lambda2_dim1)/2.0*torch.sum(torch.norm(lc_params,2, dim=1))
-#     l1_regularization_dim2 = lambda2_dim2*torch.sum(torch.norm(lc_params,1, dim=2))
-#     l2_regularization_dim2 = (1.0-lambda2_dim2)/2.0*torch.sum(torch.norm(lc_params,2, dim=2))
-    
-#     dim1_loss = lambda1_dim1 * (l1_regularization_dim1 + l2_regularization_dim1)
-#     dim2_loss = lambda1_dim2 * (l1_regularization_dim2 + l2_regularization_dim2)
-    
-#     return dim1_loss + dim2_loss
 
 def l1_l2_regularization(lc_params, lambda1_dim1, lambda2_dim1, lambda1_dim2, lambda2_dim2):
     l1_regularization_dim1 = lambda2_dim1*torch.sum(torch.norm(lc_params,1, dim=1)) 
@@ -39,9 +29,10 @@ def l1_l2_regularization(lc_params, lambda1_dim1, lambda2_dim1, lambda1_dim2, la
     dim2_loss = lambda1_dim2 * (l1_regularization_dim2 + l2_regularization_dim2)
     
     return dim1_loss + dim2_loss
-        
 
-def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_save_model="", is_trial=False, device='cuda'):
+
+
+def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_save_model="", fn_log="", is_trial=False, device='cuda'):
     device=torch.device(device)
 
     trainloader = DataLoader(training_set, batch_size=params["batch_size"], shuffle=True)
@@ -57,11 +48,9 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
 
     # optimization
     # optimizer = RAdam(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"], weight_decay=params["wd"])
-    optimizer = AdamW(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"], weight_decay=params["wd"])
-    scheduler = StepLR(optimizer, step_size=500, gamma=1/3, last_epoch=-1)
-
-    
-    
+    # optimizer = AdamW(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"], weight_decay=params["wd"])
+    optimizer = AdamW(model.parameters(), lr=params["lr"])
+    scheduler = StepLR(optimizer, step_size=params["sched-steps"], gamma=params["sched-gamma"], last_epoch=-1)
 
     # lambda to L1 regularization at LC layer
     lambda1_dim1 = params["lambda1_dim1"]
@@ -70,6 +59,12 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
     lambda2_dim2 = params["lambda2_dim2"]
 
     flood_penalty = params["flood_penalty"]
+    
+    if fn_log == "":
+        logfile = None
+    else:
+        logfile = open(fn_log, 'w')
+        logfile.write("Model\n")
 
     for e in range(epochs):
         model.train()
@@ -105,7 +100,12 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
 
         # don't print epoch loss during hyperparameter optimizations
         if not is_trial:
-            print("T epoch {}, loss {}, loss_with_regularization {}".format(e, training_loss, training_loss_reg))
+            status = f"T epoch {e}, loss {training_loss}, loss_with_regularization {training_loss_reg}"
+            if logfile == None:
+                print(status)
+            else:
+                logfile.write(status+'\n')
+
 
 
         model.eval() 
@@ -132,16 +132,15 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
             
 
         if not is_trial:
-            print(f"V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}, avg_prec {avg_prec}")
-            print("line is true, column is pred")
-            print(cm)
+            status_0 = f"V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}, avg_prec {avg_prec}"
+            status_1 = f"line is true, column is pred\n{cm}\n"
+            if logfile == None:
+                print(status_0)
+                print(status_1)
+            else:
+                logfile.write(status_0)
+                logfile.write(status_1)
 
-    if is_trial:
-        print("T epoch {}, loss {}, loss_with_regularization {}".format(e, training_loss, training_loss_reg))
-        print(f"V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}, avg_prec {avg_prec}")
-        print(cm)
-        print(params)
-    
 
     if fn_to_save_model != "":
         print("Saving model at {}".format(fn_to_save_model))
@@ -163,6 +162,9 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
                 f.write("{} = {}\n".format(k,params[k]))
             f.close()
             
+    if logfile != None:
+        logfile.close()
+
     # return validation_loss
     return training_loss, loss.item(), acc, bacc, ece.item(), mce.item(), auroc, avg_prec
 
