@@ -133,13 +133,13 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
 
         if not is_trial:
             status_0 = f"V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}, avg_prec {avg_prec}"
-            status_1 = f"line is true, column is pred\n{cm}\n"
+            status_1 = f"line is true, column is pred\n{cm}"
             if logfile == None:
                 print(status_0)
                 print(status_1)
             else:
-                logfile.write(status_0)
-                logfile.write(status_1)
+                logfile.write(status_0+'\n')
+                logfile.write(status_1+'\n')
 
 
     if fn_to_save_model != "":
