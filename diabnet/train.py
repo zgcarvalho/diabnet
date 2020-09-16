@@ -32,7 +32,7 @@ def l1_l2_regularization(lc_params, lambda1_dim1, lambda2_dim1, lambda1_dim2, la
 
 
 
-def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_save_model="", fn_log="", is_trial=False, device='cuda'):
+def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_save_model="", logfile=None, is_trial=False, device='cuda'):
     device=torch.device(device)
 
     trainloader = DataLoader(training_set, batch_size=params["batch_size"], shuffle=True)
@@ -40,16 +40,18 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
     valloader = DataLoader(validation_set, batch_size=len(validation_set), shuffle=False)
 
     # print("Number of features", training_set.dataset.n_feat)
-    model = Model(training_set.dataset.n_feat, params["hidden_neurons"], params["dropout"])
+    model = Model(training_set.dataset.n_feat, params["hidden_neurons"], params["dropout"], params["lc-layer"])
     model.to(device)
 
     loss_func = BCEWithLogitsLoss()
     loss_func.to(device)
 
     # optimization
-    # optimizer = RAdam(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"], weight_decay=params["wd"])
-    # optimizer = AdamW(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"], weight_decay=params["wd"])
-    optimizer = AdamW(model.parameters(), lr=params["lr"])
+    if params["opt"] == 'radam':
+        optimizer = RAdam(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"], weight_decay=params["wd"])
+    elif params["opt"] == 'adamw':
+        optimizer = AdamW(model.parameters(), lr=params["lr"], betas=(params["beta1"], params["beta2"]), eps=params["eps"], weight_decay=params["wd"])
+    # optimizer = AdamW(model.parameters(), lr=params["lr"])
     scheduler = StepLR(optimizer, step_size=params["sched-steps"], gamma=params["sched-gamma"], last_epoch=-1)
 
     # lambda to L1 regularization at LC layer
@@ -60,12 +62,6 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
 
     flood_penalty = params["flood_penalty"]
     
-    if fn_log == "":
-        logfile = None
-    else:
-        logfile = open(fn_log, 'w')
-        logfile.write("Model\n")
-
     for e in range(epochs):
         model.train()
         # trainloader.dataset.random_age = True
@@ -162,9 +158,6 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
                 f.write("{} = {}\n".format(k,params[k]))
             f.close()
             
-    if logfile != None:
-        logfile.close()
-
     # return validation_loss
     return training_loss, loss.item(), acc, bacc, ece.item(), mce.item(), auroc, avg_prec
 

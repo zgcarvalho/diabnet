@@ -5,10 +5,7 @@ from timeit import default_timer
 # DATASET = './datasets/visits_sp_unique_train_positivo_1000_negative_0.csv'
 
 def net(fn_dataset, fn_out_prefix, fn_log):
-    # neural network to SELECTED features with fixed dropout=0.5 during hyperopt
-    for i in range(100):
-        # start_time = default_timer()
-        print(f"Model {i:03}")
+    with open(fn_log, 'w') as logfile:
         params = {
             'hidden_neurons': 6,
             'dropout': 0.08658128211832698,
@@ -25,8 +22,11 @@ def net(fn_dataset, fn_out_prefix, fn_log):
             'sched-gamma': 0.6213666892994011,
             'beta1': 0.9,
             'beta2': 0.999,
-            'batch_size': 256
+            'batch_size': 256,
+            'opt': 'radam',
+            'lc-layer': 'lc2',
         }
+        logfile.write(f'PARAMETERS {params}\n')
 
         epochs = 500
 
@@ -35,15 +35,20 @@ def net(fn_dataset, fn_out_prefix, fn_log):
         
         dataset = data.DiabDataset(fn_dataset, features, soft_label=True, soft_label_alpha=params["soft_label_alpha"])
         len_trainset = int(0.9*len(dataset))
-        trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
+        
+        for i in range(100):
+            # start_time = default_timer()
+            print(f"Model {i:03}")
+            logfile.write(f"Model {i:03}\n")
+            trainset, valset = random_split(dataset, [len_trainset, len(dataset)-len_trainset])
 
-        fn_out = f"{fn_out_prefix}-{i:03}.pth"
-        print("model saved to:", fn_out)
-        train(params, trainset, valset, epochs, fn_out, fn_log, device='cuda', is_trial=False)
-        # end_time = default_timer()
-        # break
-        # break to train only one model
-    # print("Elapsed time = ", end_time - start_time)
+            fn_out = f"{fn_out_prefix}-{i:03}.pth"
+
+            train(params, trainset, valset, epochs, fn_out, logfile, device='cuda', is_trial=False)
+            # end_time = default_timer()
+            # break
+            # break to train only one model
+        # print("Elapsed time = ", end_time - start_time)
 
 
 if __name__ == "__main__":

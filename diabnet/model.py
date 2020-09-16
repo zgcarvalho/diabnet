@@ -50,9 +50,12 @@ class LocallyConnected(nn.Module):
 
 
 class Model(nn.Module):
-    def __init__(self, n_feat, n_hidden, dropout_p):
+    def __init__(self, n_feat, n_hidden, dropout_p, lc_layer):
         super(Model, self).__init__()
-        self.lc = LocallyConnected(n_feat, bias=False, activation=False)
+        if lc_layer == 'lc1':
+            self.lc = LocallyConnected(n_feat, bias=False, activation=False)
+        elif lc_layer == 'lc2':
+            self.lc = LocallyConnected(n_feat, bias=True, activation=True)
         self.dropout = nn.Dropout(p=dropout_p)
         self.fc = nn.Linear(n_feat, n_hidden, bias=False)
         self.bn = nn.BatchNorm1d(n_hidden)
