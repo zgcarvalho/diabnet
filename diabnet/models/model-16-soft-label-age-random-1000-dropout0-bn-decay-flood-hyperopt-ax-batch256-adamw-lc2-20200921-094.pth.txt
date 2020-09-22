@@ -1,0 +1,43 @@
+2020-09-21 20:06:55.789897
+Model name: diabnet/models/model-16-soft-label-age-random-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-adamw-lc2-20200921-094.pth
+
+Accuracy: 0.9222222222222223
+
+Balanced Accuracy: 0.8785714285714286
+
+ECE: 0.04108331725001335
+
+MCE: 0.34384894371032715
+
+AUC-ROC: 0.9648214285714286
+
+AVG-PREC: 0.8983154785746613
+
+Confusion matrix:
+[[134   6]
+ [  8  32]]
+
+T Loss: 0.3687079293387277
+
+T Loss(reg): 0.38105572972978863
+
+V Loss: 0.43704915046691895
+
+hidden_neurons = 16
+dropout = 0.1
+lr = 0.005
+eps = 2e-05
+wd = 6.5e-09
+lambda1_dim1 = 2.2e-05
+lambda2_dim1 = 9e-07
+lambda1_dim2 = 3.5e-08
+lambda2_dim2 = 1.3e-08
+flood_penalty = 0.14
+soft_label_alpha = 0.2
+sched-steps = 48
+sched-gamma = 0.3
+beta1 = 0.9
+beta2 = 0.999
+batch_size = 256
+opt = adamw
+lc-layer = lc2

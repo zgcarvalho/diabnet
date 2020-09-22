@@ -1,0 +1,39 @@
+2020-09-09 12:07:06.167725
+Model name: diabnet/models/model-6-soft-label-age-positives-1000-dropout0-bn-decay-flood-hyperopt-batch256-adamw-lc1-20200909-046.pth
+
+Accuracy: 0.9388888888888889
+
+Balanced Accuracy: 0.9160714285714286
+
+ECE: 0.051774218678474426
+
+MCE: 0.44342464208602905
+
+AUC-ROC: 0.9328571428571428
+
+AVG-PREC: 0.8433322333512263
+
+Confusion matrix:
+[[134   6]
+ [  5  35]]
+
+T Loss: 0.297880687883922
+
+T Loss(reg): 0.2979168679033007
+
+V Loss: 0.49612587690353394
+
+hidden_neurons = 6
+dropout = 0.33
+lr = 0.02
+beta1 = 0.9
+beta2 = 0.99
+eps = 3e-08
+wd = 0.001
+lambda1_dim1 = 1e-08
+lambda2_dim1 = 1e-06
+lambda1_dim2 = 1e-08
+lambda2_dim2 = 1e-06
+flood_penalty = 0.23
+soft_label_alpha = 0.16
+batch_size = 256

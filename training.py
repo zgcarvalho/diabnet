@@ -7,23 +7,23 @@ from timeit import default_timer
 def net(fn_dataset, fn_out_prefix, fn_log):
     with open(fn_log, 'w') as logfile:
         params = {
-            'hidden_neurons': 6,
-            'dropout': 0.08658128211832698,
-            'lr': 0.002530315363231387,
-            'eps': 1.6516808099564973e-07,
-            'wd': 7.141119204788848e-05,
-            'lambda1_dim1': 1.669665721023354e-06,
-            'lambda2_dim1': 6.368583640194637e-07,
-            'lambda1_dim2': 2.0342028053277926e-08,
-            'lambda2_dim2': 2.0678941459740793e-11,
-            'flood_penalty': 0.18613187374510126,
-            'soft_label_alpha': 0.10348253777080188,
-            'sched-steps': 22,
-            'sched-gamma': 0.6213666892994011,
+            'hidden_neurons': 16,
+            'dropout': 0.10,
+            'lr': 0.005,
+            'eps': 2e-05,
+            'wd': 6.5e-09,
+            'lambda1_dim1': 2.2e-05,
+            'lambda2_dim1': 9e-07,
+            'lambda1_dim2': 3.5e-08,
+            'lambda2_dim2': 1.3e-08,
+            'flood_penalty': 0.14,
+            'soft_label_alpha': 0.2,
+            'sched-steps': 48,
+            'sched-gamma': 0.30,
             'beta1': 0.9,
             'beta2': 0.999,
             'batch_size': 256,
-            'opt': 'radam',
+            'opt': 'adamw',
             'lc-layer': 'lc2',
         }
         logfile.write(f'PARAMETERS {params}\n')
@@ -52,20 +52,29 @@ def net(fn_dataset, fn_out_prefix, fn_log):
 
 
 if __name__ == "__main__":
-
-    net(fn_dataset='./datasets/visits_sp_unique_train_positivo_1000_random_0.csv',
-        fn_out_prefix='diabnet/models/model-6-soft-label-age-positives-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-adamw-lc1-20200915',
-        fn_log='log_model-6-soft-label-age-positives-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-adamw-lc1-20200915')
-   
-    net(fn_dataset='./datasets/visits_sp_unique_train_positivo_0_random_1000.csv',
-        fn_out_prefix='diabnet/models/model-6-soft-label-age-random-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-adamw-lc1-20200915',
-        fn_log='log_model-6-soft-label-age-random-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-adamw-lc1-20200915')
-  
-    net(fn_dataset='./datasets/visits_sp_unique_train_positivo_0_negative_1000.csv',
-        fn_out_prefix='diabnet/models/model-6-soft-label-age-negatives-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-adamw-lc1-20200915',
-        fn_log='log_model-6-soft-label-age-negatives-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-adamw-lc1-20200915')
+    neurons = '16'
+    optimizer = 'adamw'
+    lc = 'lc2'
+    date = '20200921'
+    slot = {}
     
-    net(fn_dataset='./datasets/visits_sp_unique_train_randomized_1_positivo_1000_random_0.csv',
-        fn_out_prefix='diabnet/models/model-6-soft-label-age-randomized_positives-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-adamw-lc1-20200915',
-        fn_log='log_model-6-soft-label-age-randomized_positives-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-adamw-lc1-20200915')
+    DATASET = './datasets/visits_sp_unique_train_positivo_1000_random_0.csv'
+    FN_OUT = f'diabnet/models/model-{neurons}-soft-label-age-{slot}-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-{optimizer}-{lc}-{date}'
+    FN_LOG = f'log_model-{neurons}-soft-label-age-{slot}-1000-dropout0-bn-decay-flood-hyperopt-ax-batch256-{optimizer}-{lc}-{date}'
+
+    net(fn_dataset=DATASET,
+        fn_out_prefix=FN_OUT.format('positives'),
+        fn_log=FN_LOG.format('positives'))
+   
+    net(fn_dataset=DATASET,
+        fn_out_prefix=FN_OUT.format('random'),
+        fn_log=FN_LOG.format('random'))
+  
+    net(fn_dataset=DATASET,
+        fn_out_prefix=FN_OUT.format('negatives'),
+        fn_log=FN_LOG.format('negatives'))
+
+    net(fn_dataset=DATASET,
+        fn_out_prefix=FN_OUT.format('randomized_positives'),
+        fn_log=FN_LOG.format('randomized_positives'))
  
