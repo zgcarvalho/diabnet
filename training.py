@@ -18,6 +18,7 @@ def net(fn_dataset, fn_out_prefix, fn_log):
             'lambda2_dim2': 1.3e-08,
             'flood_penalty': 0.14,
             'soft_label_alpha': 0.2,
+            'soft_label_baseline': 0.0,
             'sched-steps': 48,
             'sched-gamma': 0.30,
             'beta1': 0.9,
@@ -33,7 +34,7 @@ def net(fn_dataset, fn_out_prefix, fn_log):
         features = data.get_feature_names(fn_dataset, BMI=False, sex=True, parents_diagnostics=True)
         # print(features)
         
-        dataset = data.DiabDataset(fn_dataset, features, soft_label=True, soft_label_alpha=params["soft_label_alpha"])
+        dataset = data.DiabDataset(fn_dataset, features, soft_label=True, soft_label_alpha=params["soft_label_alpha"], soft_label_baseline=params["soft_label_baseline"])
         len_trainset = int(0.9*len(dataset))
         
         for i in range(100):

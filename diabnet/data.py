@@ -4,8 +4,6 @@ import numpy as np
 import torch
 from typing import Any, List
 
-SOFT_LABEL_ALPHA = 0.25
-
 
 def get_feature_names(fn: str, BMI=False, sex=True, parents_diagnostics=True) -> List[str]:
     col_names = pd.read_csv(fn).columns.values
@@ -95,33 +93,35 @@ def _len_encoding(feat_names: List[str]) -> int:
 
 
 class DiabDataset(Dataset):
-    def __init__(self, 
-                 fn_csv: str, 
-                 feat_names: List[str], 
-                 label_name="T2D", 
-                 soft_label=True, 
-                 soft_label_alpha=SOFT_LABEL_ALPHA,
+    def __init__(self,
+                 fn_csv: str,
+                 feat_names: List[str],
+                 label_name="T2D",
+                 soft_label=True,
+                 soft_label_alpha=0.15,
+                 soft_label_baseline=0.0,
                  device='cuda'):
         dt = pd.read_csv(fn_csv)
         _check_parents_diag(feat_names)
         self.feat_names = feat_names
         self.n_feat = _len_encoding(feat_names)
-         
+
         # soft label gives values greater than -1 to younger negatives (uncertainty)
         if soft_label:
             self.labels = self._soft_negative_label_adjusted_by_age(
-                dt["AGE"].values, 
-                dt[label_name].values, 
-                alpha=soft_label_alpha)
+                dt["AGE"].values,
+                dt[label_name].values,
+                alpha=soft_label_alpha,
+                baseline=soft_label_baseline)
             # self.labels = self._soft_label(dt[label_name].values, alpha=soft_label_alpha)
         else:
             self.labels = dt[label_name].values
-        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float),1).to(device)            
+        self.labels = torch.unsqueeze(torch.tensor(self.labels, dtype=torch.float), 1).to(device)
         self.raw_values = dt[feat_names].values
         self.features = torch.tensor([encode_features(self.feat_names, raw_value) for raw_value in self.raw_values], dtype=torch.float).to(device)
 
     @staticmethod
-    def _soft_negative_label_adjusted_by_age(ages: np.ndarray, labels: np.ndarray, alpha: float) -> np.ndarray:
+    def _soft_negative_label_adjusted_by_age(ages: np.ndarray, labels: np.ndarray, alpha: float, baseline: float) -> np.ndarray:
         soft_labels = np.zeros(len(labels))
         for (i,age) in enumerate(ages):
             if labels[i] == 1:
@@ -129,10 +129,11 @@ class DiabDataset(Dataset):
             else:
                 if age < 20:
                     soft_labels[i] = alpha # penalty to uncertanty
-                elif age > 80: 
-                    soft_labels[i] = 0    
-                else: 
+                elif age > 80:
+                    soft_labels[i] = 0 
+                else:
                     soft_labels[i] = alpha * (1 - (age-20)/(80-20))
+                soft_labels[i] += baseline
         return soft_labels
 
     @staticmethod
@@ -140,10 +141,10 @@ class DiabDataset(Dataset):
         soft_labels = np.abs(labels-alpha)
         # soft_labels = np.maximum(labels, alpha)
         return soft_labels
-        
+
     def __len__(self):
         return len(self.labels)
-    
+
     def __getitem__(self, idx):
         return self.features[idx], self.labels[idx]
 
