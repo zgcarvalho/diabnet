@@ -11,6 +11,7 @@ sys.path.append("../")
 # from diabnet.model import load
 from diabnet.apply_ensemble import Predictor
 from diabnet.data import get_feature_names
+from diabnet.calibration import ece_mce
 from astropy.stats import bootstrap
 from scipy.stats import rankdata
 from scipy.signal import  wiener
@@ -30,6 +31,7 @@ class Dataset:
         self._predictor = predictor
         self._predictions = None
         self._predictions_per_age = None
+        self._predictions_per_age_2 = None
         self._predictions_years_before = None
          
     @property
@@ -55,6 +57,12 @@ class Dataset:
         if self._predictions_per_age is None:
             self._predictions_per_age = {age:np.array([np.median(self._predictor.patient(f, age=age, samples_per_model=1)) for f in self.features]) for age in range(20,80,5)}
         return self._predictions_per_age
+    
+    @property
+    def predictions_per_age_2(self):
+        if self._predictions_per_age_2 is None:
+            self._predictions_per_age_2 = {age:np.array([self._predictor.patient(f, age=age, samples_per_model=1) for f in self.features]) for age in range(20,80,5)}
+        return self._predictions_per_age_2
 
     @property
     def predictions_years_before(self):
@@ -160,7 +168,25 @@ class DiabNetReport:
         db = self.dataset_test_unique
         bacc = balanced_accuracy_score(db.labels, np.round(db.predictions))
         print("Balanced Accuracy = {:.4f}".format(bacc)) 
-
+    
+    def average_precision(self):
+        db = self.dataset_test_unique
+        bacc = average_precision_score(db.labels, db.predictions)
+        print("Average Precision Score = {:.4f}".format(bacc))
+        
+    # def calibration(self, soft_label_baseline):
+    #     db = self.dataset_test_unique
+    #     ece, mce = ece_mce(torch.tensor(db.predictions, dtype=torch.float), torch.tensor(db.labels, dtype=torch.float))        
+    #     print("ECE = {:.4f}".format(ece.item())) 
+    #     print("MCE = {:.4f}".format(mce.item())) 
+    #     baseline = ((db.labels - 1) * - 0.2)
+    #     print(db.predictions)
+    #     print((db.predictions - soft_label_baseline)/(1.0 - soft_label_baseline))
+    #     print(db.predictions - (db.predictions - soft_label_baseline)/(1.0 - soft_label_baseline))
+    #     ece_base, mce_base = ece_mce(torch.tensor((db.predictions - soft_label_baseline)/(1.0 - soft_label_baseline), dtype=torch.float), torch.tensor(db.labels, dtype=torch.float)) 
+    #     print("ECE = {:.4f}".format(ece_base.item())) 
+    #     print("MCE = {:.4f}".format(mce_base.item()))
+        
     def auc_per_age(self):
         db = self.dataset_test_unique
         aucs = {age:roc_auc_score(db.labels, preds) for age, preds in db.predictions_per_age.items()}
@@ -206,7 +232,7 @@ class DiabNetReport:
 
     @staticmethod
     def roc_CI(db, ci, bootstrap_samples):
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize=(6,6), dpi=300)
         # db = self.dataset_test_unique
         
 
@@ -237,7 +263,7 @@ class DiabNetReport:
         plt.show()
 
     def roc_comp(self, fig_path="", ci=95, bootstrap_samples=1000):
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize=(6,6), dpi=300)
         db0 = self.dataset_test_unique
         db1 = self.dataset_test_unique_subset_older50      
 
@@ -293,7 +319,7 @@ class DiabNetReport:
 
     @staticmethod
     def precision_recall_CI(db, ci, bootstrap_samples):
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize=(6,6), dpi=300)
         # db = self.dataset_test_unique
         
 
@@ -326,7 +352,7 @@ class DiabNetReport:
 
 
     def precision_recall_comp(self, fig_path="", ci=95, bootstrap_samples=1000):
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize=(6,6), dpi=300)
               
         db0 = self.dataset_test_unique
         db1 = self.dataset_test_unique_subset_older50
@@ -468,7 +494,7 @@ class DiabNetReport:
         # print(patient_ages)
 
 
-        plt.figure(figsize=(16,32))
+        plt.figure(figsize=(16,32), dpi=150)
         for i in range(len(fam_masks)):
             ax1=plt.subplot(8, 4, i+1)
             p = np.stack([db.predictions_per_age[age][fam_masks[i]] for age in range(20,80,5)], axis=0)
@@ -511,7 +537,7 @@ class DiabNetReport:
         # print(patient_ages)
 
 
-        plt.figure(figsize=(16,36))
+        plt.figure(figsize=(16,36), dpi=150)
         for i in range(len(parents)):
             ax1=plt.subplot(9, 4, i+1)
             plt.title("father {} mother {}".format(parents[i][0], parents[i][1]))
@@ -588,21 +614,45 @@ class DiabNetReport:
 
         neg = self.negatives_older60
         pred_below_50 = [np.array(x) for x in pred[:,age_below_50]]
+        pred_below_50 = [x for x in pred[:,age_below_50]]
         pred_above_50 = [np.array(x) for x in pred[:,age_above_50]]
+        # print(pred_below_50)
+        # x = [i for i in neg[1]]
+        # print(x)
 
         color_boxplot = sns.color_palette("cool", n_colors=20)
 
-        plt.figure(figsize=(15,5))
+        plt.figure(figsize=(15,5), dpi=300)
         plt.subplot(131)
-        sns.boxplot(x=[i for i in neg[1]], y=pred_below_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_below_50])
+        bp0 = plt.boxplot(pred_below_50, showfliers=False, patch_artist=True, labels=[i for i in neg[1]], medianprops=dict(linewidth=2.5, color='black'))
+        colors = [color_boxplot[int(np.median(a)*20)] for a in pred_below_50]
+        for box, color in zip(bp0['boxes'], colors):
+            box.set(facecolor = color)
+            # box.set(color='blue', linewidth=5)
+            # box.set_facecolor('red')
+        # sns.boxplot(x=[i for i in neg[1]], y=pred_below_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_below_50])
+        # sns.boxplot(x=np.array([i for i in neg[1]]), y=np.array(pred_below_50))
+        # sns.boxplot(y=pred_below_50[0])
+        # sns.catplot(x=[0,1], y=pred_below_50[0:2], kind='box')
+        # plt.boxplot(pred_below_50)
+
         plt.xlabel("positives\n(age < 50 )")
         plt.ylim(0,1)
         plt.subplot(132)
-        sns.boxplot(x=[i for i in neg[1]], y=pred_above_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_above_50])
+        bp1 = plt.boxplot(pred_above_50, showfliers=False, patch_artist=True, labels=[i for i in neg[1]], medianprops=dict(linewidth=2.5, color='black'))
+        colors = [color_boxplot[int(np.median(a)*20)] for a in pred_above_50]
+        for box, color in zip(bp1['boxes'], colors):
+            box.set(facecolor = color)
+        # sns.boxplot(x=[i for i in neg[1]], y=pred_above_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_above_50])
         plt.xlabel("positives\n(age >= 50 )")
         plt.ylim(0,1)
         plt.subplot(133)
-        sns.boxplot(x=[i for i in neg[1]], y=neg[0], showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in neg[0]])
+        bp2 = plt.boxplot(neg[0], showfliers=False, patch_artist=True, labels=[i for i in neg[1]], medianprops=dict(linewidth=2.5, color='black'))
+        colors = [color_boxplot[int(np.median(a)*20)] for a in neg[0]]
+        for box, color in zip(bp2['boxes'], colors):
+            box.set(facecolor = color)
+            box.set(edgecolor = 'black')
+        # sns.boxplot(x=[i for i in neg[1]], y=neg[0], showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in neg[0]])
         plt.xlabel("negatives\n(age >= 60)")
         plt.ylim(0,1)
         plt.tight_layout(pad=1)
@@ -612,71 +662,71 @@ class DiabNetReport:
 
         plt.show()
 
-    def first_positives_violin(self, fig_path=""):
-        db = self.dataset_test_first_diag
-        pos_mask = db.labels == 1
-        pred = np.stack([db.predictions_per_age[age][pos_mask] for age in range(20,80,5)], axis=0)
-        age_above_50 = db.df.AGE.values[pos_mask] >= 50
-        age_below_50 = db.df.AGE.values[pos_mask] < 50
+    # def first_positives_violin(self, fig_path=""):
+    #     db = self.dataset_test_first_diag
+    #     pos_mask = db.labels == 1
+    #     pred = np.stack([db.predictions_per_age[age][pos_mask] for age in range(20,80,5)], axis=0)
+    #     age_above_50 = db.df.AGE.values[pos_mask] >= 50
+    #     age_below_50 = db.df.AGE.values[pos_mask] < 50
 
-        neg = self.negatives_older60
-        pred_below_50 = [np.array(x) for x in pred[:,age_below_50]]
-        pred_above_50 = [np.array(x) for x in pred[:,age_above_50]]
+    #     neg = self.negatives_older60
+    #     pred_below_50 = [np.array(x) for x in pred[:,age_below_50]]
+    #     pred_above_50 = [np.array(x) for x in pred[:,age_above_50]]
 
-        color_boxplot = sns.color_palette("cool", n_colors=20)
+    #     color_boxplot = sns.color_palette("cool", n_colors=20)
 
-        plt.figure(figsize=(15,5))
-        plt.subplot(131)
-        sns.violinplot(x=[i for i in neg[1]], y=pred_below_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_below_50])
-        plt.xlabel("positives\n(age < 50 )")
-        plt.ylim(0,1)
-        plt.subplot(132)
-        sns.violinplot(x=[i for i in neg[1]], y=pred_above_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_above_50])
-        plt.xlabel("positives\n(age >= 50 )")
-        plt.ylim(0,1)
-        plt.subplot(133)
-        sns.violinplot(x=[i for i in neg[1]], y=neg[0], showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in neg[0]])
-        plt.xlabel("negatives\n(age >= 60)")
-        plt.ylim(0,1)
-        plt.tight_layout(pad=1)
+    #     plt.figure(figsize=(15,5))
+    #     plt.subplot(131)
+    #     sns.violinplot(x=[i for i in neg[1]], y=pred_below_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_below_50])
+    #     plt.xlabel("positives\n(age < 50 )")
+    #     plt.ylim(0,1)
+    #     plt.subplot(132)
+    #     sns.violinplot(x=[i for i in neg[1]], y=pred_above_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_above_50])
+    #     plt.xlabel("positives\n(age >= 50 )")
+    #     plt.ylim(0,1)
+    #     plt.subplot(133)
+    #     sns.violinplot(x=[i for i in neg[1]], y=neg[0], showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in neg[0]])
+    #     plt.xlabel("negatives\n(age >= 60)")
+    #     plt.ylim(0,1)
+    #     plt.tight_layout(pad=1)
 
-        if fig_path != "":
-            plt.savefig(fig_path)
+    #     if fig_path != "":
+    #         plt.savefig(fig_path)
 
-        plt.show()
+    #     plt.show()
 
-    def first_positives_boxen(self, fig_path=""):
-        db = self.dataset_test_first_diag
-        pos_mask = db.labels == 1
-        pred = np.stack([db.predictions_per_age[age][pos_mask] for age in range(20,80,5)], axis=0)
-        age_above_50 = db.df.AGE.values[pos_mask] >= 50
-        age_below_50 = db.df.AGE.values[pos_mask] < 50
+    # def first_positives_boxen(self, fig_path=""):
+    #     db = self.dataset_test_first_diag
+    #     pos_mask = db.labels == 1
+    #     pred = np.stack([db.predictions_per_age[age][pos_mask] for age in range(20,80,5)], axis=0)
+    #     age_above_50 = db.df.AGE.values[pos_mask] >= 50
+    #     age_below_50 = db.df.AGE.values[pos_mask] < 50
 
-        neg = self.negatives_older60
-        pred_below_50 = [np.array(x) for x in pred[:,age_below_50]]
-        pred_above_50 = [np.array(x) for x in pred[:,age_above_50]]
+    #     neg = self.negatives_older60
+    #     pred_below_50 = [np.array(x) for x in pred[:,age_below_50]]
+    #     pred_above_50 = [np.array(x) for x in pred[:,age_above_50]]
 
-        color_boxplot = sns.color_palette("cool", n_colors=20)
+    #     color_boxplot = sns.color_palette("cool", n_colors=20)
 
-        plt.figure(figsize=(15,5))
-        plt.subplot(131)
-        sns.boxenplot(x=[i for i in neg[1]], y=pred_below_50, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_below_50])
-        plt.xlabel("positives\n(age < 50 )")
-        plt.ylim(0,1)
-        plt.subplot(132)
-        sns.boxenplot(x=[i for i in neg[1]], y=pred_above_50, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_above_50])
-        plt.xlabel("positives\n(age >= 50 )")
-        plt.ylim(0,1)
-        plt.subplot(133)
-        sns.boxenplot(x=[i for i in neg[1]], y=neg[0], palette=[color_boxplot[int(np.median(a)*20)] for a in neg[0]])
-        plt.xlabel("negatives\n(age >= 60)")
-        plt.ylim(0,1)
-        plt.tight_layout(pad=1)
+    #     plt.figure(figsize=(15,5))
+    #     plt.subplot(131)
+    #     sns.boxenplot(x=[i for i in neg[1]], y=pred_below_50, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_below_50])
+    #     plt.xlabel("positives\n(age < 50 )")
+    #     plt.ylim(0,1)
+    #     plt.subplot(132)
+    #     sns.boxenplot(x=[i for i in neg[1]], y=pred_above_50, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_above_50])
+    #     plt.xlabel("positives\n(age >= 50 )")
+    #     plt.ylim(0,1)
+    #     plt.subplot(133)
+    #     sns.boxenplot(x=[i for i in neg[1]], y=neg[0], palette=[color_boxplot[int(np.median(a)*20)] for a in neg[0]])
+    #     plt.xlabel("negatives\n(age >= 60)")
+    #     plt.ylim(0,1)
+    #     plt.tight_layout(pad=1)
 
-        if fig_path != "":
-            plt.savefig(fig_path)
+    #     if fig_path != "":
+    #         plt.savefig(fig_path)
 
-        plt.show()
+    #     plt.show()
 
 
     # def use_first_diag(self):
