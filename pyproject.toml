@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "diabnet"
+version = "0.1.0"
+description = "Neural Network to predict type 2 diabetes."
+authors = ["Jose Geraldo de Carvalho Pereira <zgcarvalho@outlook.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.7"
+torch = "^1.7.0"
+numpy = "^1.19.4"
+pandas = "^1.1.4"
+matplotlib = "^3.3.3"
+scikit-learn = "^0.23.2"
+toml = "^0.10.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+pynvim = "^0.4.2"
+mypy = "^0.790"
+pylint = "^2.6.0"
+black = "^20.8b1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# datasets, trained models and logs
+data/datasets/
+data/logs/
+data/models/
