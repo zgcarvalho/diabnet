@@ -77,7 +77,7 @@ class Predictor(object):
 
         
     def _sampler(self, x, samples_per_model):
-        return self.ensemble.apply(x, samples_per_model, with_correction=False)
+        return self.ensemble.apply(x, samples_per_model, with_correction=True)
 
     def _encode_features(self, feat, age=-1, bmi=-1):
         if age >= 0:
