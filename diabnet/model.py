@@ -110,7 +110,7 @@ class Model(nn.Module):
         if with_correction:
             base = torch.ones(1).to(y.device) * self.soft_label_baseline
             top = torch.ones(1).to(y.device) * self.soft_label_topline
-            return torch.minimum(torch.maximum((y - base)/(top - base), base), top)
+            return torch.minimum(torch.maximum((y - base)/(top - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
         return y
 
 
