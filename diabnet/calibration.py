@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+
 class CalibrationModel(nn.Module):
     def __init__(self, model):
         super(CalibrationModel, self).__init__()
@@ -15,8 +16,8 @@ class CalibrationModel(nn.Module):
 
 
 def ece_mce(preds, targets, bins=10):
-    lower_bound = torch.arange(0.0, 1.0, 1.0/bins)
-    upper_bound = lower_bound + 1.0/bins
+    lower_bound = torch.arange(0.0, 1.0, 1.0 / bins)
+    upper_bound = lower_bound + 1.0 / bins
 
     ece = torch.zeros(1, device=preds.device)
     mce = torch.zeros(1, device=preds.device)
@@ -30,6 +31,7 @@ def ece_mce(preds, targets, bins=10):
             mce = torch.max(mce, delta)
 
     return ece, mce
+
 
 if __name__ == "__main__":
     p = torch.rand(1000)
