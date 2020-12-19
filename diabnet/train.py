@@ -111,21 +111,22 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
 
 
 
-        model.eval() 
-            
+        model.eval()
+
         for i, sample in enumerate(valloader):
             x, y_true = sample
             y_pred = model(x.to(device))
 
             loss = loss_func(y_pred, y_true.to(device))
-            
+
             # ece and mce are calibration metrics
             # ece, mce = ece_mce(y_pred, y_true)
 
+            y_ = (y_true > 0.5).type(torch.float)
+            p = model.sigmoid(y_pred, with_correction=True)
+            ece, mce = ece_mce(p, y_)
 
             t = y_true.cpu().detach().numpy()
-            p = model.sigmoid(y_pred, with_correction=False)
-            ece, mce = ece_mce(p, y_true)
             p = p.cpu().detach().numpy()
 
             t_b = t > 0.5
@@ -136,7 +137,7 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
             fscore = fbeta_score(t_b, p_b, beta=1.0)
             auroc = roc_auc_score(t_b, p)
             avg_prec = average_precision_score(t_b, p)
-            
+
 
         if not is_trial:
             status_0 = f'V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}, avg_prec {avg_prec}, fscore {fscore}'
