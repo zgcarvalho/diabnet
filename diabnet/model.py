@@ -25,7 +25,7 @@ class LocallyConnected(nn.Module):
         bias (bool): use bias (default: False)
         activation (bool): use activation function tanh (default: False)
     """
-    def __init__(self, output_size: int, bias=False, activation=False):
+    def __init__(self, output_size: int, bias=False, activation=''):
         super(LocallyConnected, self).__init__()
         in_channels = 2 # number of inputs for each lc neuron
         out_channels = 1 # number of outpus for each lc neuron
@@ -35,7 +35,15 @@ class LocallyConnected(nn.Module):
             self.bias = nn.Parameter(torch.randn(1, out_channels, output_size))
         else:
             self.register_parameter('bias', None)
-        self.activation = activation
+
+        if activation == 'tanh':
+            self.act = nn.Tanh()
+        elif activation == 'sigmoid':
+            self.act = nn.Sigmoid()
+        elif activation == 'gelu':
+            self.act = nn.GELU()
+        else:
+            self.act = nn.Identity()
 
 
 
@@ -44,8 +52,11 @@ class LocallyConnected(nn.Module):
         if self.bias is not None:
             out += self.bias
         out = out.squeeze(1)
-        if self.activation:
-            out = torch.tanh(out)
+        # if self.activation == 'tanh':
+            # out = torch.tanh(out)
+            # out = torch.sigmoid(out)
+            # out = nn.functional.relu(out)
+        out = self.act(out)
         return out
 
 
@@ -70,14 +81,27 @@ class Model(nn.Module):
 
         super(Model, self).__init__()
         if lc_layer == 'lc1':
-            self.lc = LocallyConnected(n_feat, bias=False, activation=False)
+            self.lc = LocallyConnected(n_feat, bias=False, activation='identity')
         elif lc_layer == 'lc2':
-            self.lc = LocallyConnected(n_feat, bias=True, activation=True)
+            self.lc = LocallyConnected(n_feat, bias=True, activation='tanh')
+        elif lc_layer == 'lc3':
+            self.lc = LocallyConnected(n_feat, bias=False, activation='tanh')
+        elif lc_layer == 'lc4':
+            self.lc = LocallyConnected(n_feat, bias=True, activation='sigmoid')
+        elif lc_layer == 'lc5':
+            self.lc = LocallyConnected(n_feat, bias=False, activation='sigmoid')
+        elif lc_layer == 'lc6':
+            self.lc = LocallyConnected(n_feat, bias=True, activation='gelu')
+        elif lc_layer == 'lc7':
+            self.lc = LocallyConnected(n_feat, bias=False, activation='gelu')
 
         self.dropout = nn.Dropout(p=dropout_p)
         self.fc = nn.Linear(n_feat, n_hidden, bias=False)
         self.bn = nn.BatchNorm1d(n_hidden)
-        self.act = nn.Softplus()
+        #self.act = nn.Softplus()
+        #self.act = nn.ReLU()
+        self.act = nn.GELU()
+        #self.act = nn.ELU()
         self.exit = nn.Linear(n_hidden, 1)
 
         self.soft_label_baseline = soft_label_baseline
