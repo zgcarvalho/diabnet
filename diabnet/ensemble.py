@@ -27,6 +27,8 @@ class Ensemble:
             x (np.ndarray): encoded input features
             samples_per_model (int, optional): Number of times each model is applied. Only necessary when 
             the inference has something stochastic like MC Dropout. Defaults to 1.
+            age_idx (int): x column that have age information. Necessary for y correction.
+            with_correction (bool): 
 
         Returns:
             np.ndarray: N prediction values between [0,1] where N is the number of models in the ensemble x samples_per_model.
@@ -36,7 +38,8 @@ class Ensemble:
             # a = np.array([m.sigmoid_with_baseline_correction(m(x), ages).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
         # else:
             # a = np.array([torch.sigmoid(m(x)).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
-        a = np.array([m.sigmoid(m(x), with_correction=with_correction).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
+        # a = np.array([m.sigmoid(m(x), with_correction=with_correction).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
+        a = np.array([m.apply(x).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
         return a
 
 if __name__ == "__main__":

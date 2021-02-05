@@ -22,7 +22,7 @@ def get_feature_names(fn_csv: str, use_bmi=False, use_sex=True, use_parents_diag
 
     col_names = pd.read_csv(fn_csv).columns.values
     # always remove "id" "famid" "T2D(label)" "mo" and "fa"
-    # mo_t2d and fa_t2d are removed here but can be inserted at correct position later
+    # mo_t2d and fa_t2d are removed here but can be inserted into the correct position later
     col_names = np.setdiff1d(
         col_names,
         np.array(['id','famid','T2D','mo','fa','mo_t2d','fa_t2d','BMI','sex','Unnamed: 0','',' ']),
@@ -137,6 +137,7 @@ class DiabDataset(Dataset):
         soft_label (bool): use soft label. Prob_negatives > 0 and Prob_positives < 1. Default: True
         soft_label_baseline (float): value to Prob_negatives. Default: 0.0
         soft_label_topline (float): value to Prob_positives. Default: 1.0
+        soft_label_baseline_slope (float): decrease in Prob_negatives uncertainty. Unevenness between 20yo and 80 yo. Default: 0.0
         device (str): tensor device. Default is 'cuda'.
 
     Attributes:
@@ -154,6 +155,7 @@ class DiabDataset(Dataset):
                  soft_label=True,
                  soft_label_baseline=0.0,
                  soft_label_topline=1.0,
+                 soft_label_baseline_slope=0.0,
                  device='cuda'):
 
         df = pd.read_csv(fn_csv)
@@ -161,24 +163,30 @@ class DiabDataset(Dataset):
 
         self.feat_names = feat_names
         self.n_feat = _len_encoding(feat_names)
-        self.raw_values = df[feat_names].values
+        self._raw_values = df[feat_names].values
+        self._raw_labels = df[label_name].values
+        self._ages = df['AGE'].values
         self.features = torch.tensor(
-            [encode_features(self.feat_names, raw_value) for raw_value in self.raw_values],
+            [encode_features(self.feat_names, raw_value) for raw_value in self._raw_values],
             dtype=torch.float).to(device)
         
         if soft_label:
             labels = self._soft_label(
-                df[label_name].values,
                 baseline=soft_label_baseline,
-                topline=soft_label_topline)
+                topline=soft_label_topline,
+                baseline_slope=soft_label_baseline_slope)
         else:
-            labels = df[label_name].values
+            labels = self._raw_labels
         self.labels = torch.unsqueeze(torch.tensor(labels, dtype=torch.float), 1).to(device)
 
-    @staticmethod
-    def _soft_label(labels: np.ndarray, baseline: float, topline: float) -> np.ndarray:
-        assert baseline < topline
-        soft_labels = np.maximum(labels * topline, baseline)
+    def _soft_label(self, baseline: float, topline: float, baseline_slope: float) -> np.ndarray:
+        assert baseline < topline and baseline_slope <= 0.0
+        if baseline_slope == 0.0:
+            soft_labels = np.maximum(self._raw_labels * topline, baseline)
+        else:
+            ages = np.minimum(np.maximum(self._ages, 20.0), 80.0)
+            base_adjusted_by_age = np.maximum(baseline + baseline_slope * (ages - 20.0)/(80.0 - 20.0), 0)
+            soft_labels = np.maximum(self._raw_labels * topline, base_adjusted_by_age)
         return soft_labels
 
     def __len__(self):
@@ -187,23 +195,9 @@ class DiabDataset(Dataset):
     def __getitem__(self, idx):
         return self.features[idx], self.labels[idx]
 
-    # @staticmethod
-    # def _soft_negative_label_adjusted_by_age(ages: np.ndarray, labels: np.ndarray, alpha: float, baseline: float) -> np.ndarray:
-        # soft_labels = np.zeros(len(labels))
-        # for (i,age) in enumerate(ages):
-            # if labels[i] == 1:
-                # soft_labels[i] = 1 
-            # else:
-                # if age < 20:
-                    # soft_labels[i] = alpha # penalty to uncertanty
-                # elif age > 80:
-                    # soft_labels[i] = 0 
-                # else:
-                    # soft_labels[i] = alpha * (1 - (age-20)/(80-20))
-                # soft_labels[i] += baseline
-        # soft_labels = np.maximum(soft_labels, 0.0)
-        # return soft_labels
-
+    def ajust_soft_label(self, baseline, topline, baseline_slope):
+        labels = self._soft_label(baseline, topline, baseline_slope)
+        self.labels = torch.unsqueeze(torch.tensor(labels, dtype=torch.float), 1).to('cuda')
 
     # def randomize_age(self, idx):
     #     true_age = self.features[idx][0,-1]

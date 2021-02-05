@@ -25,6 +25,7 @@ def net(fn_dataset, fn_out_prefix, fn_log, params, epochs, n_ensemble):
             soft_label=True,
             soft_label_baseline=params["soft-label-baseline"],
             soft_label_topline=params["soft-label-topline"],
+            soft_label_baseline_slope=params["soft-label-baseline-slope"],
         )
 
         # 10% from training_set to use as validation

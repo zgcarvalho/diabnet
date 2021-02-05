@@ -76,8 +76,11 @@ class Model(nn.Module):
                  n_hidden: int,
                  dropout_p: float,
                  lc_layer: str,
+                 use_correction: bool,
                  soft_label_baseline: float,
-                 soft_label_topline: float):
+                 soft_label_topline: float,
+                 soft_label_baseline_slope: float,
+                 age_idx: int):
 
         super(Model, self).__init__()
         if lc_layer == 'lc1':
@@ -104,10 +107,11 @@ class Model(nn.Module):
         #self.act = nn.ELU()
         self.exit = nn.Linear(n_hidden, 1)
 
+        self.use_correction = use_correction
         self.soft_label_baseline = soft_label_baseline
-        # self.soft_label_alpha = soft_label_alpha
         self.soft_label_topline = soft_label_topline
-        # self.age_idx = age_idx
+        self.soft_label_baseline_slope = soft_label_baseline_slope
+        self.age_idx = age_idx 
         # age_idx = training_set.dataset.feat_names.index('AGE')
 
 
@@ -120,27 +124,45 @@ class Model(nn.Module):
         out = self.exit(out)
         return out
 
-    # def sigmoid_with_baseline_correction(self, y, ages: float):
+    def apply(self, x):
+        y = self.forward(x)
+        return self.sigmoid(y, self.get_ages(x), with_correction=self.use_correction)
         # y = torch.sigmoid(y)
-        # ages = torch.minimum(torch.maximum(ages, torch.tensor([0.4]).to(y.device)), torch.tensor([1.6]).to(y.device))
-        # # base = torch.maximum(self.soft_label_alpha * (1 - (ages - 0.4)/(1.6 - 0.4)) + self.soft_label_baseline, torch.zeros(1).to(y.device))
-        # base = torch.maximum(self.soft_label_alpha * (1 - (ages - 0.4)/(1.6 - 0.4)) + self.soft_label_baseline, torch.zeros(1).to(y.device))
-        # # base = torch.maximum(0.0 * (1 - (ages - 0.4)/(1.6 - 0.4)) + self.soft_label_baseline, torch.zeros(1).to(y.device))
-        # # base = torch.maximum(1.1 * self.soft_label_alpha * (1 - (ages - 0.4)/(1.6 - 0.4)) + self.soft_label_baseline * 0.9, torch.zeros(1).to(y.device))
-        # return torch.minimum(torch.maximum((y - base)/(self.soft_label_topline - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
+        # if self.use_correction:
+            # if self.soft_label_baseline_slope == 0.0:
+                # base = torch.ones(1).to(y.device) * self.soft_label_baseline
+                # top = torch.ones(1).to(y.device) * self.soft_label_topline
+                # return torch.minimum(torch.maximum((y - base)/(top - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
+            # else:
+                # ages = self.get_ages(x)
+                # ages = torch.minimum(torch.maximum(ages, torch.tensor([0.4]).to(y.device)), torch.tensor([1.6]).to(y.device))
+                # base = torch.maximum(self.soft_label_baseline + self.soft_label_baseline_slope * (ages - 0.4)/(1.6 - 0.4), torch.zeros(1).to(y.device))
+                # return torch.minimum(torch.maximum((y - base)/(self.soft_label_topline - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
+        # return y
 
-    def sigmoid(self, y, with_correction=False):
+
+    def sigmoid(self, y, ages, with_correction=False):
         y = torch.sigmoid(y)
         if with_correction:
-            base = torch.ones(1).to(y.device) * self.soft_label_baseline
-            top = torch.ones(1).to(y.device) * self.soft_label_topline
-            return torch.minimum(torch.maximum((y - base)/(top - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
+            if self.soft_label_baseline_slope == 0.0:
+                base = torch.ones(1).to(y.device) * self.soft_label_baseline
+                top = torch.ones(1).to(y.device) * self.soft_label_topline
+                return torch.minimum(torch.maximum((y - base)/(top - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
+            else:
+                ages = torch.minimum(torch.maximum(ages, torch.tensor([0.4]).to(y.device)), torch.tensor([1.6]).to(y.device))
+                base = torch.maximum(self.soft_label_baseline + self.soft_label_baseline_slope * (ages - 0.4)/(1.6 - 0.4), torch.zeros(1).to(y.device))
+                return torch.minimum(torch.maximum((y - base)/(self.soft_label_topline - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
         return y
 
 
+    # def sigmoid_age_correction(self, y, ages: np.ndarray):
+        # y = torch.sigmoid(y)
+        # ages = torch.minimum(torch.maximum(ages, torch.tensor([0.4]).to(y.device)), torch.tensor([1.6]).to(y.device))
+        # base = torch.maximum(self.soft_label_baseline + self.soft_label_baseline_slope * (ages - 0.4)/(1.6 - 0.4), torch.zeros(1).to(y.device))
+        # return torch.minimum(torch.maximum((y - base)/(self.soft_label_topline - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
 
-    # def get_ages(self, x):
-        # return x[:,0:1,self.age_idx]
+    def get_ages(self, x):
+        return x[:,0:1,self.age_idx]
 
 
 def load(filename: str):

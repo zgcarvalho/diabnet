@@ -1,14 +1,14 @@
 from typing import Dict, Any
 import datetime
-import math
-import numpy as np
+# import math
+# import numpy as np
 import torch
 from torch.utils.data import DataLoader, random_split
 from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam, SGD, AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, roc_auc_score, average_precision_score, fbeta_score
-from diabnet import data
+# from diabnet import data
 from diabnet.model import Model
 from diabnet.optim import RAdam
 from diabnet.calibration import ece_mce
@@ -40,14 +40,18 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
     valloader = DataLoader(validation_set, batch_size=len(validation_set), shuffle=False)
 
     # print("Number of features", training_set.dataset.n_feat)
+    use_correction = True
     age_idx = training_set.dataset.feat_names.index('AGE')
     model = Model(
         training_set.dataset.n_feat,
         params['hidden-neurons'],
         params['dropout'],
         params['lc-layer'],
+        use_correction,
         params['soft-label-baseline'],
-        params['soft-label-topline'])
+        params['soft-label-topline'],
+        params['soft-label-baseline-slope'],
+        age_idx)
     model.to(device)  
 
     loss_func = BCEWithLogitsLoss()
@@ -123,7 +127,9 @@ def train(params: Dict[str,Any], training_set, validation_set, epochs, fn_to_sav
             # ece, mce = ece_mce(y_pred, y_true)
 
             y_ = (y_true > 0.5).type(torch.float)
-            p = model.sigmoid(y_pred, with_correction=True)
+            ages = x[:, 0:1, age_idx]
+            p = model.sigmoid(y_pred, ages, with_correction=True)
+            # p = model.apply(x.to(device))
             ece, mce = ece_mce(p, y_)
 
             t = y_true.cpu().detach().numpy()
