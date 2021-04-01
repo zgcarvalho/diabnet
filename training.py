@@ -104,10 +104,49 @@ def train_from(config):
             config["run"]["ensemble"],
         )
 
-    if config["datasets"]["shuffled-positive"]:
-        dataset = "data/datasets/visits_sp_unique_train_randomized_1_positivo_1000_random_0.csv"
-        fn_out = "data/models/" + fn.format("shuffled-positive")
-        fn_log = "data/logs/" + fn.format("shuffled-positive")
+    if config["datasets"]["shuffled-snps"]:
+        dataset = "data/datasets/visits_sp_unique_train_shuffled_snps_positivo_1000_random_0.csv"
+        fn_out = "data/models/" + fn.format("shuffled-snps")
+        fn_log = "data/logs/" + fn.format("shuffled-snps")
+        net(
+            dataset,
+            fn_out,
+            fn_log,
+            config["params"],
+            config["run"]["epochs"],
+            config["run"]["ensemble"],
+        )
+
+    if config["datasets"]["shuffled-labels"]:
+        dataset = "data/datasets/visits_sp_unique_train_shuffled_labels_positivo_1000_random_0.csv"
+        fn_out = "data/models/" + fn.format("shuffled-labels")
+        fn_log = "data/logs/" + fn.format("shuffled-labels")
+        net(
+            dataset,
+            fn_out,
+            fn_log,
+            config["params"],
+            config["run"]["epochs"],
+            config["run"]["ensemble"],
+        )
+
+    if config["datasets"]["shuffled-ages"]:
+        dataset = "data/datasets/visits_sp_unique_train_shuffled_ages_positivo_1000_random_0.csv"
+        fn_out = "data/models/" + fn.format("shuffled-ages")
+        fn_log = "data/logs/" + fn.format("shuffled-ages")
+        net(
+            dataset,
+            fn_out,
+            fn_log,
+            config["params"],
+            config["run"]["epochs"],
+            config["run"]["ensemble"],
+        )
+
+    if config["datasets"]["shuffled-parents"]:
+        dataset = "data/datasets/visits_sp_unique_train_shuffled_parents_positivo_1000_random_0.csv"
+        fn_out = "data/models/" + fn.format("shuffled-parents")
+        fn_log = "data/logs/" + fn.format("shuffled-parents")
         net(
             dataset,
             fn_out,
