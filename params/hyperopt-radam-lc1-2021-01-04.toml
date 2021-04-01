@@ -1,0 +1,34 @@
+title = "Radam-lc1"
+description = "Otimização utizando fscore, 500 epocas, 300 trials, 7 runs/trial"
+
+[params]
+hidden-neurons=8
+dropout=0.17
+lr=0.013
+flood-penalty=0.15
+soft-label-topline=0.95
+soft-label-baseline=0.3
+sched-steps=55
+sched-gamma=0.7
+eps=7e-05
+lambda1-dim1=1e-05
+lambda1-dim2=1e-05
+lambda2-dim1=1e-05
+lambda2-dim2=1e-05
+wd=0.00018
+beta1=0.9
+beta2=0.999
+batch-size=256
+optimizer="radam"
+lc-layer="lc1"
+
+[run]
+epochs=500
+ensemble=100
+
+[datasets]
+positive=true
+random=true
+negative=true
+shuffled-positive=true
+families=true

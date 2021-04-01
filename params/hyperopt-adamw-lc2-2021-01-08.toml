@@ -1,0 +1,35 @@
+title = "Adamw-lc2"
+description = "Otimização utizando f2-score, 500 epocas, 200 trials, 7 runs/trial"
+
+[params]
+hidden-neurons=9
+dropout=0.09
+lr=0.003
+flood-penalty=0.028
+soft-label-topline=0.97
+soft-label-baseline=0.41
+sched-steps=82
+sched-gamma=0.59
+eps=1e-08
+lambda1-dim1=2e-05
+lambda1-dim2=2e-09
+lambda2-dim1=5e-10
+lambda2-dim2=9e-07
+wd=1e-05
+beta1=0.9
+beta2=0.999
+batch-size=256
+optimizer="adamw"
+lc-layer="lc2"
+
+[run]
+epochs=500
+ensemble=100
+
+[datasets]
+positive=true
+random=false
+negative=false
+shuffled-positive=false
+families=false
+

@@ -1,0 +1,34 @@
+title = "Adamw-lc1"
+description = "Otimização utizando fscore, 500 epocas, 300 trials, 7 runs/trial"
+
+[params]
+hidden-neurons=8
+dropout=0.25
+lr=0.03
+flood-penalty=0.45
+soft-label-topline=0.9
+soft-label-baseline=0.3
+sched-steps=65
+sched-gamma=0.5
+eps=2e-05
+lambda1-dim1=1e-06
+lambda1-dim2=1e-06
+lambda2-dim1=1e-04
+lambda2-dim2=1e-04
+wd=0.00015
+beta1=0.9
+beta2=0.999
+batch-size=256
+optimizer="adamw"
+lc-layer="lc1"
+
+[run]
+epochs=500
+ensemble=100
+
+[datasets]
+positive=true
+random=true
+negative=true
+shuffled-positive=true
+families=true

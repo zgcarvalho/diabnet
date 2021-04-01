@@ -1,0 +1,35 @@
+title = "Adamw-lc2"
+description = "Otimização utizando avg_prec, 500 epocas, 200 trials, 7 runs/trial"
+
+[params]
+hidden-neurons=9
+dropout=0.288
+lr=0.008
+flood-penalty=0.367
+soft-label-topline=0.67
+soft-label-baseline=0.25
+sched-steps=82
+sched-gamma=0.39
+eps=4e-07
+lambda1-dim1=3e-11
+lambda1-dim2=3e-06
+lambda2-dim1=9e-12
+lambda2-dim2=6e-07
+wd=1e-07
+beta1=0.9
+beta2=0.999
+batch-size=256
+optimizer="adamw"
+lc-layer="lc2"
+
+[run]
+epochs=500
+ensemble=100
+
+[datasets]
+positive=true
+random=false
+negative=false
+shuffled-positive=false
+families=false
+
