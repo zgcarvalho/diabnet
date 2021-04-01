@@ -151,7 +151,8 @@ class Model(nn.Module):
             else:
                 ages = torch.minimum(torch.maximum(ages, torch.tensor([0.4]).to(y.device)), torch.tensor([1.6]).to(y.device))
                 base = torch.maximum(self.soft_label_baseline + self.soft_label_baseline_slope * (ages - 0.4)/(1.6 - 0.4), torch.zeros(1).to(y.device))
-                return torch.minimum(torch.maximum((y - base)/(self.soft_label_topline - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
+                top = torch.ones(1).to(y.device) * self.soft_label_topline
+                return torch.minimum(torch.maximum((y - base)/(top - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
         return y
 
 
