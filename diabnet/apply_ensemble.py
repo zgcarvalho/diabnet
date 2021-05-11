@@ -59,13 +59,13 @@ class Predictor(object):
             print("No information about negatives")
             return None 
 
-    def patient_life(self, feat, age_range=range(20,90,5), bmi=-1, samples_per_model=1):
+    def patient_life(self, feat, age_range=range(20,81,5), bmi=-1, samples_per_model=1):
         probs_by_age = []
         for age in age_range:
             probs_by_age.append(self.patient(feat, age, bmi, samples_per_model))
         return probs_by_age, age_range
 
-    def negatives_life(self, age_range=range(20,90,5), bmi=-1, samples_per_model=1):
+    def negatives_life(self, age_range=range(20,81,5), bmi=-1, samples_per_model=1):
         if self.negative_data is not None:   
             probs_by_age = []
             for age in age_range:
@@ -77,7 +77,7 @@ class Predictor(object):
 
         
     def _sampler(self, x, samples_per_model):
-        return self.ensemble.apply(x, samples_per_model, with_correction=True)
+        return self.ensemble.apply(x, samples_per_model)
 
     def _encode_features(self, feat, age=-1, bmi=-1):
         if age >= 0:

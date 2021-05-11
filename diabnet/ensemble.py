@@ -19,7 +19,7 @@ class Ensemble:
             models.append(load(fn))
         return models
 
-    def apply(self, x: np.ndarray, samples_per_model=1, with_correction=False) -> np.ndarray:
+    def apply(self, x: np.ndarray, samples_per_model=1) -> np.ndarray:
         """Apply all ensemble's models to some input and return an array
         with prediction values between [0,1].
 
@@ -33,12 +33,6 @@ class Ensemble:
         Returns:
             np.ndarray: N prediction values between [0,1] where N is the number of models in the ensemble x samples_per_model.
         """
-        # if correction:
-            # ages = self.models[0].get_ages(x)
-            # a = np.array([m.sigmoid_with_baseline_correction(m(x), ages).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
-        # else:
-            # a = np.array([torch.sigmoid(m(x)).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
-        # a = np.array([m.sigmoid(m(x), with_correction=with_correction).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
         a = np.array([m.apply(x).detach().numpy()[0,0] for m in self.models for _ in range(samples_per_model)])
         return a
 

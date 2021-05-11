@@ -127,19 +127,6 @@ class Model(nn.Module):
     def apply(self, x):
         y = self.forward(x)
         return self.sigmoid(y, self.get_ages(x), with_correction=self.use_correction)
-        # y = torch.sigmoid(y)
-        # if self.use_correction:
-            # if self.soft_label_baseline_slope == 0.0:
-                # base = torch.ones(1).to(y.device) * self.soft_label_baseline
-                # top = torch.ones(1).to(y.device) * self.soft_label_topline
-                # return torch.minimum(torch.maximum((y - base)/(top - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
-            # else:
-                # ages = self.get_ages(x)
-                # ages = torch.minimum(torch.maximum(ages, torch.tensor([0.4]).to(y.device)), torch.tensor([1.6]).to(y.device))
-                # base = torch.maximum(self.soft_label_baseline + self.soft_label_baseline_slope * (ages - 0.4)/(1.6 - 0.4), torch.zeros(1).to(y.device))
-                # return torch.minimum(torch.maximum((y - base)/(self.soft_label_topline - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
-        # return y
-
 
     def sigmoid(self, y, ages, with_correction=False):
         y = torch.sigmoid(y)
@@ -154,13 +141,6 @@ class Model(nn.Module):
                 top = torch.ones(1).to(y.device) * self.soft_label_topline
                 return torch.minimum(torch.maximum((y - base)/(top - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
         return y
-
-
-    # def sigmoid_age_correction(self, y, ages: np.ndarray):
-        # y = torch.sigmoid(y)
-        # ages = torch.minimum(torch.maximum(ages, torch.tensor([0.4]).to(y.device)), torch.tensor([1.6]).to(y.device))
-        # base = torch.maximum(self.soft_label_baseline + self.soft_label_baseline_slope * (ages - 0.4)/(1.6 - 0.4), torch.zeros(1).to(y.device))
-        # return torch.minimum(torch.maximum((y - base)/(self.soft_label_topline - base), torch.zeros(1).to(y.device)), torch.ones(1).to(y.device))
 
     def get_ages(self, x):
         return x[:,0:1,self.age_idx]

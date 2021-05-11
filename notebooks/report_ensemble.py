@@ -30,40 +30,49 @@ from scipy.stats import rankdata
 from scipy.signal import wiener
 from scipy.interpolate import interp1d
 from typing import List
+import calibration
 
 COLORS = sns.color_palette("colorblind")
 sns.set_style("whitegrid")
 sns.set_style("ticks", {"axes.grid": True, "grid.color": ".95", "grid.linestyle": "-"})
 
 
-def ece(targets, preds, bins=5):
-    lower_bound = np.arange(0.0, 1.0, 1.0 / bins)
-    upper_bound = lower_bound + 1.0 / bins
+def ece(targets, preds, bins=10):
+    """ ECE - Expected Calibration Error
+    Ref: On Calibration of Modern Neural Networks (https://arxiv.org/abs/1706.04599)
+    """
+    lower_bounds = np.arange(0.0, 1.0, 1.0 / bins)
+    upper_bounds = lower_bounds + 1.0 / bins
 
-    # ece = np.zeros(1)
     ece = 0.0
 
     for i in range(bins):
-        mask = (preds > lower_bound[i]) * (preds <= upper_bound[i])
+        mask = (preds > lower_bounds[i]) * (preds <= upper_bounds[i])
         if np.any(mask):
-            # print(lower_bound[i], upper_bound[i], preds[mask], torch.mean(targets[mask]))
             delta = np.abs(np.mean(preds[mask]) - np.mean(targets[mask]))
             ece += delta * np.mean(mask)
 
     return ece
 
 
-def mce(targets, preds, bins=5):
-    lower_bound = np.arange(0.0, 1.0, 1.0 / bins)
-    upper_bound = lower_bound + 1.0 / bins
+def ece_(targets, preds, bins=10):
+    """ ECE - Expected Calibration Error
+    Ref: Verified Uncertainty Calibration https://arxiv.org/abs/1909.10155
+    """
+    return calibration.get_ece(preds, targets, bins=bins)
 
-    # mce = np.zeros(1)
+def mce(targets, preds, bins=10):
+    """ MCE - Maximum Calibration Error
+    Ref: On Calibration of Modern Neural Networks (https://arxiv.org/abs/1706.04599)
+    """
+    lower_bounds = np.arange(0.0, 1.0, 1.0 / bins)
+    upper_bounds = lower_bounds + 1.0 / bins
+
     mce = 0.0
 
     for i in range(bins):
-        mask = (preds > lower_bound[i]) * (preds <= upper_bound[i])
+        mask = (preds > lower_bounds[i]) * (preds <= upper_bounds[i])
         if np.any(mask):
-            # print(lower_bound[i], upper_bound[i], preds[mask], torch.mean(targets[mask]))
             delta = np.abs(np.mean(preds[mask]) - np.mean(targets[mask]))
             mce = np.maximum(mce, delta)
 
@@ -97,9 +106,9 @@ class Dataset:
 
     @property
     def predictions(self):
+        """ return the mean value from ensemble predictions 
+        """
         if self._predictions is None:
-            # self._predictions = np.array([np.median(self._predictor.patient(f, age=-1, samples_per_model=1)) for f in self.features])
-            # self._predictions = np.array([np.mean(self._predictor.patient(f, age=-1, samples_per_model=1)) for f in self.features])
             self._predictions = np.array(
                 [np.mean(preds) for preds in self.predictions_ensemble]
             )
