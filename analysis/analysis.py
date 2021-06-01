@@ -198,11 +198,11 @@ def plot_bacc(data, ax, colors):
     plt.ylabel("Balanced accuracy (%)", fontsize=9)
 
     # Limits
-    plt.ylim(0.0, 100.0)
+    plt.ylim(40, 100)
     plt.xlim(-3, 303)
 
     # Ticks
-    plt.yticks(np.arange(0.0, 100, 10), fontsize=9)
+    plt.yticks(np.arange(40, 101, 10), fontsize=9)
     plt.xticks(fontsize=9)
 
     return ax
