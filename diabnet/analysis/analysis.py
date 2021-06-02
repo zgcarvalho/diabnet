@@ -1,6 +1,8 @@
+import matplotlib
+import seaborn
 import numpy as np
-from typing import Dict, List, Tuple
-
+import pandas as pd
+from typing import Dict, List, Union, Tuple, Optional
 
 # --------------------------------------------------------------------------- #
 # ------------------ Notebook 1: Training results analysis ------------------ #
@@ -211,4 +213,164 @@ def plot_bacc(data, ax, colors):
 # --------------------------------------------------------------------------- #
 # ------------------- Notebook 2: Report metrics ensemble ------------------- #
 
-# TODO: Functions
+
+def _data2barplot(
+    data: pd.DataFrame, selection: Optional[List[str]] = None, orient: str = "index"
+) -> Tuple[Dict[str, List[float]], List[str]]:
+    """Prepara pandas.DataFrame to barplot.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data of family cross-validation analysis.
+    selection : List[str], optional
+        A list of metrics to be ploted. I must only contain
+        header in data, by default None.
+    orient : str {'dict', 'index'}, optional
+        Determines the type of the values of the dictionary, by default `index`.
+
+            * 'dict' : dict like {column -> {index -> value}}
+
+            * 'index' (default) : dict like {index -> {column -> value}}
+
+    Returns
+    -------
+    data : Dict[str, List[float]]
+        Data prepared to barplot function.
+    labels : List[str]
+        A list of labels to barplot function.
+
+    Raises
+    ------
+    TypeError
+        "`data` must be a pandas.DataFrame.
+    ValueError
+        `selection` must be columns of `data`.
+    TypeError
+        `orient` must be `dict` or `index`.
+    ValueError
+        `orient` must be `dict` or `index`.
+    """
+    # Check arguments
+    if type(data) not in [pd.DataFrame]:
+        raise TypeError("`data` must be a pandas.DataFrame.")
+    if selection is not None:
+        if type(selection) not in [list]:
+            raise TypeError("`selection` must be a list.")
+        elif not set(selection).issubset(list(data.columns)):
+            raise ValueError("`selection` must be columns of `data`.")
+        # Apply selection
+        data = data[selection]
+    if type(orient) not in [str]:
+        raise TypeError("`orient` must be `dict` or `index`.")
+    elif orient not in ["dict", "index"]:
+        raise ValueError("`orient` must be `dict` or `index`.")
+
+    # Convert data to dict
+    tmp = data.to_dict(orient)
+
+    # Get labels
+    labels = list(tmp[list(tmp)[0]].keys())
+
+    # Prepare data for barplot
+    data = {key: list(tmp[key].values()) for key in tmp.keys()}
+
+    return data, labels
+
+
+def barplot(
+    ax,
+    data: Dict[str, List[float]],
+    selection: Optional[List[str]] = None,
+    labels: Optional[List[str]] = None,
+    rotation: int = 0,
+    ha: str = "center",
+    orient: str = "index",
+    colors: Optional[Union[List[float], seaborn.palettes._ColorPalette]] = None,
+    total_width: float = 0.9,
+    single_width: float = 1,
+    legend: bool = True,
+):
+    """Draws a bar plot with multiple bars per data point.
+
+    Parameters
+    ----------
+    ax : matplotlib.pyplot.axis
+        The axis we want to draw our plot on.
+    data : Dict[str, List[float]]
+        A dictionary containing the data we want to plot. Keys are the names of the
+        data, the items is a list of the values.
+    selection : List[str], optional
+        A list of metrics to be ploted. I must only contain
+        header in data, by default None.
+    labels : List[str], optional
+        A list of labels to use as axis ticks. If we want to remove xticks, set
+        to []. If None, use labels from _data2barplot, by default None.
+    rotation : int, optional
+        Rotation (degrees) of xticks, by default 0.
+    ha : str {'left', 'center', 'right'}, optional
+        Horizontal aligments of xticks, by default `center`.
+    orient : str {'dict', 'index'}, optional
+        Determines the type of the values of the dictionary, by default `index`.
+
+            * 'dict' : dict like {column -> {index -> value}}
+
+            * 'index' (default) : dict like {index -> {column -> value}}
+    colors : Union[List[float], seaborn.palettes._ColorPalette], optional
+        A list of colors which are used for the bars. If None, the colors
+        will be the standard matplotlib color cylel, by default None.
+    total_width : float, optional
+        The width of a bar group. 0.9 means that 90% of the x-axis is covered
+        by bars and 10% will be spaces between the bars, by default 0.9.
+    single_width: float, optional
+        The relative width of a single bar within a group. 1 means the bars
+        will touch eachother within a group, values less than 1 will make
+        these bars thinner, by default 1.
+    legend: bool, optional
+        If this is set to true, a legend will be added to the axis, by default True.
+    """
+    from matplotlib import pyplot as plt
+
+    # Check if colors where provided, otherwhise use the default color cycle
+    if colors is None:
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    # Prepare data
+    if labels is None:
+        data, labels = _data2barplot(data, selection=selection, orient=orient)
+    else:
+        data, _ = _data2barplot(data, selection=selection, orient=orient)
+
+    # Number of bars per group
+    n_bars = len(data)
+
+    # The width of a single bar
+    bar_width = total_width / n_bars
+
+    # List containing handles for the drawn bars, used for the legend
+    bars = []
+
+    # Iterate over all data
+    for i, (name, values) in enumerate(data.items()):
+        # The offset in x direction of that bar
+        x_offset = (i - n_bars / 2) * bar_width + bar_width / 2
+
+        # Draw a bar for every value of that type
+        for x, y in enumerate(values):
+            bar = ax.bar(
+                x + x_offset,
+                y,
+                width=bar_width * single_width,
+                color=colors[i % len(colors)],
+            )
+
+        # Add a handle to the last drawn bar, which we'll need for the legend
+        bars.append(bar[0])
+
+    # Set x ticks
+    ax.set_xticks(range(len(labels)), minor=False)
+    ax.set_xticklabels(labels, rotation=rotation, ha=ha)
+
+    # Draw legend if we need
+    if legend:
+        ax.legend(bars, data.keys())

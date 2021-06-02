@@ -26,7 +26,7 @@ from diabnet.apply_ensemble import Predictor
 from diabnet.data import get_feature_names
 
 # from diabnet.calibration import ece_mce
-# from astropy.stats import bootstrap
+from astropy.stats import bootstrap
 from scipy.stats import rankdata
 from scipy.signal import wiener
 from scipy.interpolate import interp1d
@@ -261,16 +261,14 @@ class DiabNetReport:
 
         # self.feat_names = self.get_feature_names("../data/datasets/visits_sp_unique_test_"+data_suffix, use_bmi, use_sex, use_parents)
         self.feat_names = get_feature_names(
-            "../data/datasets/visits_sp_unique_test_" + data_suffix,
+            "../data/visits_sp_unique_test_" + data_suffix,
             # use_bmi=use_bmi,
             use_sex=use_sex,
             use_parents_diagnosis=use_parents,
         )
         if use_negatives:
             negatives_csv = (
-                "../data/datasets/visits_sp_unique_test_"
-                + data_suffix.strip(".csv")
-                + "_negatives_older60.csv"
+                "../data/visits_sp_unique_test_positivo_1000_random_0_negatives_older60.csv"
             )
         else:
             negatives_csv = None
@@ -296,7 +294,7 @@ class DiabNetReport:
     def dataset_test_unique(self):
         if self._dataset_test_unique is None:
             self._dataset_test_unique = Dataset(
-                "../data/datasets/visits_sp_unique_test_" + self.data_suffix,
+                "../data/visits_sp_unique_test_" + self.data_suffix,
                 self.feat_names,
                 self.predictor,
             )
@@ -307,7 +305,7 @@ class DiabNetReport:
         # subset positives or negatives older than 50
         if self._dataset_test_unique_subset_older50 is None:
             db = Dataset(
-                "../data/datasets/visits_sp_unique_test_" + self.data_suffix,
+                "../data/visits_sp_unique_test_" + self.data_suffix,
                 self.feat_names,
                 self.predictor,
             )
@@ -319,7 +317,7 @@ class DiabNetReport:
     def dataset_test_changed(self):
         if self._dataset_test_changed is None:
             self._dataset_test_changed = Dataset(
-                "../data/datasets/visits_sp_changed_test_" + self.data_suffix,
+                "../data/visits_sp_changed_test_" + self.data_suffix,
                 self.feat_names,
                 self.predictor,
             )
@@ -329,7 +327,7 @@ class DiabNetReport:
     def dataset_test_first_diag(self):
         if self._dataset_test_first_diag == None:
             db = Dataset(
-                "../data/datasets/visits_sp_changed_test_" + self.data_suffix,
+                "../data/visits_sp_changed_test_" + self.data_suffix,
                 self.feat_names,
                 self.predictor,
             )
@@ -356,7 +354,7 @@ class DiabNetReport:
     def dataset_test_all(self):
         if self._dataset_test_all is None:
             self._dataset_test_all = Dataset(
-                "../data/datasets/visits_sp_all_test_" + self.data_suffix,
+                "../data/visits_sp_all_test_" + self.data_suffix,
                 self.feat_names,
                 self.predictor,
             )
