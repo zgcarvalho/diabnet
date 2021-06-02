@@ -80,6 +80,9 @@ python3 training.py configs/full-training.toml
 Data analysis is performed through a collection of Jupyter Notebooks in the `analysis` directory, that are:
 
 - `01-training-results-analysis.ipynb`
+- `02-report-metrics-ensemble.ipynb`
+- `03-calibration.ipynb`
+- `04-family-cross-validation.ipynb`
 - `...`
 
 First of all, the poetry virtual environment must be manually added to the IPython to be available on Jupyter.
@@ -91,7 +94,7 @@ python -m ipykernel install --user --name=.venv
 Afterwards, you can run each Jupyter Notebook to visualize DiabNet results with explanations.
 
 ```bash
-jupyter notebook --notebook-dir analysis
+jupyter notebook --notebook-dir notebooks
 ```
 
 However, you may prefer to run all analyzes via bash, that will produce the same images of the Jupyter Notebooks. So run:
