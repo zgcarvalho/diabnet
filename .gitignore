@@ -1,6 +1,6 @@
 # VSCode settings
 .vscode/
-*/.vscode
+*/.vscode/
 
 # Poetry local configuration
 poetry.toml
@@ -9,7 +9,7 @@ poetry.toml
 data/
 
 # Ignore results
-results/
+./results/
 results/logs/
 results/models/
 
