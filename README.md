@@ -77,7 +77,7 @@ python3 training.py configs/full-training.toml
 
 ## Data analysis
 
-Data analysis is performed through a collection of Jupyter Notebooks in the `analysis` directory, that are:
+Data analysis is performed through a collection of Jupyter Notebooks in the `notebooks` directory, that are:
 
 - `01-training-results-analysis.ipynb`
 - `02-report-metrics-ensemble.ipynb`
