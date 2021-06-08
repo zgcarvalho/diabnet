@@ -378,6 +378,16 @@ class DiabNetReport:
     def average_precision(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._average_precision(self.dataset_test_unique, interval, bootnum, alpha)
 
+    @staticmethod
+    def _brier(db, interval, bootnum, alpha):
+        return db.bootstrap(brier_score_loss, num=bootnum, alpha=alpha, interval=interval)
+
+    def brier(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._brier(self.dataset_test_unique, interval, bootnum, alpha)
+
+    def brier_ensemble(self):
+        return brier_score_loss(self.dataset_test_unique.labels.repeat(100), self.dataset_test_unique.predictions_ensemble.flatten())
+
 
     @staticmethod
     def _f1(db, interval, bootnum, alpha):
