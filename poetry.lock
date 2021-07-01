@@ -94,14 +94,14 @@ tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>
 
 [[package]]
 name = "ax-platform"
-version = "0.1.20"
+version = "0.2.0"
 description = "Adaptive Experimentation"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
-botorch = "0.4.0"
+botorch = "0.5.0"
 jinja2 = "*"
 pandas = "*"
 plotly = "*"
@@ -110,7 +110,7 @@ scipy = "*"
 typeguard = "*"
 
 [package.extras]
-dev = ["beautifulsoup4", "black", "flake8", "pytest (>=4.6)", "pytest-cov", "sphinx", "sphinx-autodoc-typehints", "torchvision (>=0.5.0)", "nbconvert (<=5.6.1)"]
+dev = ["beautifulsoup4", "black", "flake8", "pytest (>=4.6)", "pytest-cov", "sphinx (<4.0)", "sphinx-autodoc-typehints", "torchvision (>=0.5.0)", "nbconvert (<=5.6.1)"]
 mysql = ["SQLAlchemy (>=1.1.13)"]
 notebook = ["jupyter"]
 
@@ -161,19 +161,19 @@ webencodings = "*"
 
 [[package]]
 name = "botorch"
-version = "0.4.0"
+version = "0.5.0"
 description = "Bayesian Optimization in PyTorch"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
-gpytorch = ">=1.4"
+gpytorch = ">=1.5"
 scipy = "*"
-torch = ">=1.7.1"
+torch = ">=1.8.1"
 
 [package.extras]
-dev = ["pytest", "pytest-cov", "black", "flake8", "sphinx", "sphinx-autodoc-typehints"]
+dev = ["pytest", "pytest-cov", "black", "flake8", "sphinx", "usort"]
 test = ["pytest", "pytest-cov"]
 tutorials = ["ax-platform", "cma", "jupyter", "matplotlib", "memory-profiler", "pykeops", "torchvision"]
 
@@ -1405,7 +1405,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pyt
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7"
-content-hash = "e764972b07200fdf95115d2e92a408cef8102c58aba9e434fd15158001835b7e"
+content-hash = "06ecde4bc689e6ecd66bedaae996e23550302d06bd161b1d595b3f1e046a6f53"
 
 [metadata.files]
 appdirs = [
@@ -1475,8 +1475,8 @@ attrs = [
     {file = "attrs-21.2.0.tar.gz", hash = "sha256:ef6aaac3ca6cd92904cdd0d83f629a15f18053ec84e6432106f7a4d04ae4f5fb"},
 ]
 ax-platform = [
-    {file = "ax-platform-0.1.20.tar.gz", hash = "sha256:a2ba7648c282e0328c2eb992aa933c11c8ca407c9753cf4cdf05af749d8651e6"},
-    {file = "ax_platform-0.1.20-py3-none-any.whl", hash = "sha256:ea2d91513e591b3599a5cd8efe0a590e477abc0529328f5ec188a6154f1f14b3"},
+    {file = "ax-platform-0.2.0.tar.gz", hash = "sha256:ffae1e0108e07fc6511e4ce8214629dcf4048af67fbfb553f8f50a4788c6b44e"},
+    {file = "ax_platform-0.2.0-py3-none-any.whl", hash = "sha256:60c3f8f1f871a0a3b4fa427b7ae32587ff2fff6dad632b4255fa2f5cf517ee1b"},
 ]
 backcall = [
     {file = "backcall-0.2.0-py2.py3-none-any.whl", hash = "sha256:fbbce6a29f263178a1f7915c1940bde0ec2b2a967566fe1c65c1dfb7422bd255"},
@@ -1491,8 +1491,8 @@ bleach = [
     {file = "bleach-3.3.0.tar.gz", hash = "sha256:98b3170739e5e83dd9dc19633f074727ad848cbedb6026708c8ac2d3b697a433"},
 ]
 botorch = [
-    {file = "botorch-0.4.0-py3-none-any.whl", hash = "sha256:4de6ec904707b17bc304dbd6d9f3657b3e3688d4e2bf8338c263ecfa908133ee"},
-    {file = "botorch-0.4.0.tar.gz", hash = "sha256:d98dd303294207b955a794b12433cc5ac2331e36cebf1b94f75c5f5162be861b"},
+    {file = "botorch-0.5.0-py3-none-any.whl", hash = "sha256:00fa48372ff8e3b68dc68ef6a8ef00d10fd2be9ac8216501440a84d812cd1880"},
+    {file = "botorch-0.5.0.tar.gz", hash = "sha256:acee7baa52e001c90f21ed0012230981ca1cb270460e259557394a9b3fcf02d2"},
 ]
 captum = [
     {file = "captum-0.3.1-py3-none-any.whl", hash = "sha256:efc0afe743ef5e09c0b12509898bb21a03a446bfc67a0cf5c4a0f3ef58e17d62"},
