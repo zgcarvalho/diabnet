@@ -1,9 +1,11 @@
 from typing import List
 import pandas as pd
 import numpy as np
-import torch
+# import torch
 import matplotlib.pyplot as plt
 import seaborn as sns
+from collections import OrderedDict
+from matplotlib.ticker import AutoMinorLocator
 
 sns.set()
 from sklearn.metrics import (
@@ -26,10 +28,10 @@ from diabnet.apply_ensemble import Predictor
 from diabnet.data import get_feature_names
 
 # from diabnet.calibration import ece_mce
-# from astropy.stats import bootstrap
+from astropy.stats import bootstrap
 from scipy.stats import rankdata
-from scipy.signal import wiener
-from scipy.interpolate import interp1d
+# from scipy.signal import wiener
+# from scipy.interpolate import interp1d
 from typing import List
 import calibration
 
@@ -85,14 +87,16 @@ class Dataset:
     def __init__(self, fn: str, feat_names: List[str], predictor: Predictor):
         self.df = pd.read_csv(fn)
         self._feat_names = feat_names
+        self._predictor = predictor
+        # properties below are computed when needed (lazy)
         self._features = None
         self._labels = None
-        self._predictor = predictor
         self._predictions = None
         self._predictions_ensemble = None
         self._predictions_per_age = None
         self._predictions_per_age_ensemble = None
         self._predictions_years_before = None
+        self._age_range = range(20, 80, 5)
 
     @property
     def features(self):
@@ -108,7 +112,7 @@ class Dataset:
 
     @property
     def predictions(self):
-        """return the mean value from ensemble predictions"""
+        # returns the mean value from ensemble predictions
         if self._predictions is None:
             self._predictions = np.array(
                 [np.mean(preds) for preds in self.predictions_ensemble]
@@ -117,6 +121,8 @@ class Dataset:
 
     @property
     def predictions_ensemble(self):
+        # Returns all output values from ensemble models. One for each model. 
+        # Output shape is NxM where N is number of patients and M is number of models into the ensemble
         if self._predictions_ensemble is None:
             self._predictions_ensemble = np.array(
                 [
@@ -129,8 +135,6 @@ class Dataset:
     @property
     def predictions_per_age(self):
         if self._predictions_per_age is None:
-            # self._predictions_per_age = {age:np.array([np.median(self._predictor.patient(f, age=age, samples_per_model=1)) for f in self.features]) for age in range(20,80,5)}
-            # self._predictions_per_age = {age:np.array([np.mean(self._predictor.patient(f, age=age, samples_per_model=1)) for f in self.features]) for age in range(20,80,5)}
             self._predictions_per_age = {
                 age: np.array(
                     [np.mean(preds) for preds in self.predictions_per_age_ensemble[age]]
@@ -149,7 +153,8 @@ class Dataset:
                         for f in self.features
                     ]
                 )
-                for age in range(20, 30, 5)
+                for age in self._age_range
+                # for age in range(20, 80, 5)
             }
         return self._predictions_per_age_ensemble
 
@@ -158,7 +163,6 @@ class Dataset:
         # Probably this analysis make sense only in patients with known first diagnosis
         i = self._feat_names.index("AGE")
         if self._predictions is None:
-            # self._predictions_years_before = {yb:np.array([np.median(self._predictor.patient(f, age=f[i]-yb, samples_per_model=1)) for f in self.features]) for yb in range(0,10,1)}
             self._predictions_years_before = {
                 yb: np.array(
                     [
@@ -186,10 +190,7 @@ class Dataset:
                 self.labels[mask_preds],
                 np.mean(self.predictions_ensemble[mask_preds][:, mask_ensemble], 1),
             )
-        # print(data)
         data = np.sort(data)
-        # print(np.mean(data)
-        # print(np.min(data), np.max(data))
         if interval == "CI":
             return {
                 "value": value,
@@ -210,7 +211,7 @@ class Dataset:
 
     @staticmethod
     def _hdi(data, p):
-        """High Density Interval"""
+        """Highest Density Interval"""
         l = int(len(data) * p)
         diff, lower, upper = data[-1] - data[0], data[0], data[-1]
         for i in range(len(data) - l):
@@ -221,30 +222,17 @@ class Dataset:
                 upper = data[i + l - 1]
         return (lower, upper)
 
-
-#################################
-
-# class DiabNetFamReport:
-#     def __init__(self, ensembles: List[Ensemble], data_suffix, use_negatives=True, use_bmi=False, use_sex=True, use_parents=True):
-#         # data_suffix -> e.g. "positivo_1000_random_0.csv"
-#         self.data_suffix = data_suffix
-
-#         # self.feat_names = self.get_feature_names("../data/datasets/visits_sp_unique_test_"+data_suffix, use_bmi, use_sex, use_parents)
-#         self.feat_names = get_feature_names("../data/datasets/visits_sp_unique_test_"+data_suffix, BMI=use_bmi, sex=use_sex, parents_diagnostics=use_parents)
-#         # if use_negatives:
-#         #     negatives_csv="../data/datasets/visits_sp_unique_test_"+data_suffix.strip(".csv")+"_negatives_older60.csv"
-#         # else:
-#         #     negatives_csv=None
-#         self.predictors = [Predictor(e, self.feat_names, negatives_csv=None) for e in ensembles]
-#         self._dataset_test_unique = None
-#         self._dataset_test_unique_subset_older50 = None
-#         self._dataset_test_changed = None
-#         self._dataset_test_all = None
-#         self._dataset_test_first_diag = None
-#         self._negatives_older60 = None
-
-#################################
-
+    def _hdi_idx(data, p):
+        """Highest Density Interval"""
+        l = int(len(data) * p)
+        diff = data[-1] - data[0]
+        for i in range(len(data) - l):
+            new_diff = data[i + l - 1] - data[i]
+            if diff > new_diff:
+                diff = new_diff
+                lower_idx = i
+                upper_idx = i + l -1
+        return (lower_idx, upper_idx)
 
 class DiabNetReport:
     def __init__(
@@ -252,14 +240,12 @@ class DiabNetReport:
         ensemble,
         data_suffix,
         use_negatives=True,
-        # use_bmi=False,
         use_sex=True,
         use_parents=True,
     ):
         # data_suffix -> e.g. "positivo_1000_random_0.csv"
         self.data_suffix = data_suffix
 
-        # self.feat_names = self.get_feature_names("../data/datasets/visits_sp_unique_test_"+data_suffix, use_bmi, use_sex, use_parents)
         self.feat_names = get_feature_names(
             "../data/datasets/visits_sp_unique_test_" + data_suffix,
             # use_bmi=use_bmi,
@@ -274,15 +260,17 @@ class DiabNetReport:
             )
         else:
             negatives_csv = None
+
         self.predictor = Predictor(
             ensemble, self.feat_names, negatives_csv=negatives_csv
         )
-        self._dataset_test_unique = None
-        self._dataset_test_unique_subset_older50 = None
-        self._dataset_test_changed = None
-        self._dataset_test_all = None
-        self._dataset_test_first_diag = None
         self._negatives_older60 = None
+        # all dateset below are prepared only when needed (lazy)
+        self._dataset_test_unique = None
+        self._dataset_test_unique_subset_neg_older50 = None
+        self._dataset_test_changed = None
+        self._dataset_test_first_diag = None
+        # self._dataset_test_all = None
 
     @property
     def negatives_older60(self):
@@ -303,17 +291,17 @@ class DiabNetReport:
         return self._dataset_test_unique
 
     @property
-    def dataset_test_unique_subset_older50(self):
+    def dataset_test_unique_subset_neg_older50(self):
         # subset positives or negatives older than 50
-        if self._dataset_test_unique_subset_older50 is None:
+        if self._dataset_test_unique_subset_neg_older50 is None:
             db = Dataset(
                 "../data/datasets/visits_sp_unique_test_" + self.data_suffix,
                 self.feat_names,
                 self.predictor,
             )
             db.df = db.df[(db.df.T2D > 0.5) | (db.df.AGE >= 50)]
-            self._dataset_test_unique_subset_older50 = db
-        return self._dataset_test_unique_subset_older50
+            self._dataset_test_unique_subset_neg_older50 = db
+        return self._dataset_test_unique_subset_neg_older50
 
     @property
     def dataset_test_changed(self):
@@ -327,18 +315,22 @@ class DiabNetReport:
 
     @property
     def dataset_test_first_diag(self):
+        # selects a subset from "changed" where is possible to infer the age that a pacient 
+        # received the first positive diagnosis
         if self._dataset_test_first_diag == None:
             db = Dataset(
                 "../data/datasets/visits_sp_changed_test_" + self.data_suffix,
                 self.feat_names,
                 self.predictor,
             )
-            # seleciona as amostras negativas e agrupa por id pegando a MAIOR idade
+            # take the negative rows, group them by patient id and take the greatest age
             neg = db.df[db.df.T2D == 0][["id", "AGE"]].groupby("id").max()
-            # seleciona as amostras positivas e agrupa por id pegando a MENOR idade
+            # take the postive rows, group them by patient id and take the lowest age
             pos = db.df[db.df.T2D == 1][["id", "AGE"]].groupby("id").min()
+            # join both selections by id
             dtmp = neg.join(pos, lsuffix="_neg", rsuffix="_pos")
-            # filtra somente pacientes que a idade negativa < idade positiva
+            # into the "changed" dataset there are patients with negative diagnosis after a positive. As I don't know how to interpret this
+            # correctly I think better to keep this patients out of this subset
             dtmp = dtmp[dtmp.AGE_neg < dtmp.AGE_pos]
             tmp = pd.concat(
                 [
@@ -347,20 +339,21 @@ class DiabNetReport:
                 ]
             )
             tmp = tmp.reset_index()
-            # Eu odeio a API do pandas!!!
             db.df = db.df.merge(tmp, on=["id", "AGE"], how="inner")
             self._dataset_test_first_diag = db
         return self._dataset_test_first_diag
 
-    @property
-    def dataset_test_all(self):
-        if self._dataset_test_all is None:
-            self._dataset_test_all = Dataset(
-                "../data/datasets/visits_sp_all_test_" + self.data_suffix,
-                self.feat_names,
-                self.predictor,
-            )
-        return self._dataset_test_all
+    # this subset has more than one entry for some patients. this entries are at different ages
+    # and sometimes has different diagnosis. it is not being used now. 
+    # @property
+    # def dataset_test_all(self):
+    #     if self._dataset_test_all is None:
+    #         self._dataset_test_all = Dataset(
+    #             "../data/datasets/visits_sp_all_test_" + self.data_suffix,
+    #             self.feat_names,
+    #             self.predictor,
+    #         )
+    #     return self._dataset_test_all
 
     ######################################################
     # Report methods
@@ -371,6 +364,9 @@ class DiabNetReport:
     def auc(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._auc(self.dataset_test_unique, interval, bootnum, alpha)
 
+    def auc_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._auc(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
+
     @staticmethod
     def _average_precision(db, interval, bootnum, alpha):
         return db.bootstrap(average_precision_score, num=bootnum, alpha=alpha, interval=interval)
@@ -378,12 +374,18 @@ class DiabNetReport:
     def average_precision(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._average_precision(self.dataset_test_unique, interval, bootnum, alpha)
 
+    def average_precision_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._average_precision(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
+
     @staticmethod
     def _brier(db, interval, bootnum, alpha):
         return db.bootstrap(brier_score_loss, num=bootnum, alpha=alpha, interval=interval)
 
     def brier(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._brier(self.dataset_test_unique, interval, bootnum, alpha)
+
+    def brier_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._brier(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
 
     def brier_ensemble(self):
         return brier_score_loss(self.dataset_test_unique.labels.repeat(100), self.dataset_test_unique.predictions_ensemble.flatten())
@@ -401,6 +403,9 @@ class DiabNetReport:
     def f1(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._f1(self.dataset_test_unique, interval, bootnum, alpha)
 
+    def f1_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._f1(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
+
     @staticmethod
     def _acc(db, interval, bootnum, alpha):
         return db.bootstrap(
@@ -412,6 +417,9 @@ class DiabNetReport:
 
     def acc(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._acc(self.dataset_test_unique, interval, bootnum, alpha)
+
+    def acc_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._acc(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
 
     @staticmethod
     def _bacc(db, interval, bootnum, alpha):
@@ -425,6 +433,9 @@ class DiabNetReport:
     def bacc(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._bacc(self.dataset_test_unique, interval, bootnum, alpha)
 
+    def bacc_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._bacc(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
+
     @staticmethod
     def _precision(db, interval, bootnum, alpha):
         return db.bootstrap(
@@ -436,6 +447,9 @@ class DiabNetReport:
 
     def precision(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._precision(self.dataset_test_unique, interval, bootnum, alpha)
+
+    def precision_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._precision(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
 
     @staticmethod
     def _recall(db, interval, bootnum, alpha, pos_label):
@@ -450,9 +464,18 @@ class DiabNetReport:
         # sensitivity is the same as positive class recall
         return self._recall(self.dataset_test_unique, interval, bootnum, alpha, pos_label=1)
 
+    def sensitivity_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        # sensitivity is the same as positive class recall
+        return self._recall(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha, pos_label=1)
+
     def specificity(self, interval="CI", bootnum=5000, alpha=0.05):
         # specificity is the same as negative class recall
         return self._recall(self.dataset_test_unique, interval, bootnum, alpha, pos_label=0)
+
+    def specificity_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        # specificity is the same as negative class recall
+        return self._recall(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha, pos_label=0)
+
 
     @staticmethod
     def _ece(db, interval, bootnum, alpha):
@@ -461,12 +484,18 @@ class DiabNetReport:
     def ece(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._ece(self.dataset_test_unique, interval, bootnum, alpha)
 
+    def ece_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._ece(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
+
     @staticmethod
     def _mce(db, interval, bootnum, alpha):
         return db.bootstrap(mce, num=bootnum, alpha=alpha, interval=interval)
 
     def mce(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._mce(self.dataset_test_unique, interval, bootnum, alpha)
+
+    def mce_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._mce(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
 
     ##########
     def auc_per_age(self):
@@ -513,309 +542,311 @@ class DiabNetReport:
                 )
             )
 
-    def roc_curves(self):
-        db = self.dataset_test_unique
-        for _, pr in db.predictions_per_age.items():
-            fpr, tpr, threshold = roc_curve(db.labels, pr)
-            plt.plot(fpr, tpr)
-        plt.ylim(0, 1)
-        plt.xlim(0, 1)
-        # axis labels
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
-        plt.show()
+    # def roc_curves(self):
+    #     db = self.dataset_test_unique
+    #     for _, pr in db.predictions_per_age.items():
+    #         fpr, tpr, threshold = roc_curve(db.labels, pr)
+    #         plt.plot(fpr, tpr)
+    #     plt.ylim(0, 1)
+    #     plt.xlim(0, 1)
+    #     # axis labels
+    #     plt.xlabel("False Positive Rate")
+    #     plt.ylabel("True Positive Rate")
+    #     plt.show()
 
-    def roc_ci(self, ci=95, bootstrap_samples=1000):
-        self.roc_CI(self.dataset_test_unique, ci, bootstrap_samples)
+    # def roc_ci(self, ci=95, bootstrap_samples=1000):
+    #     self.roc_CI(self.dataset_test_unique, ci, bootstrap_samples)
 
-    def roc_ci_older50(self, ci=95, bootstrap_samples=1000):
-        self.roc_CI(self.dataset_test_unique_subset_older50, ci, bootstrap_samples)
+    # def roc_ci_older50(self, ci=95, bootstrap_samples=1000):
+    #     self.roc_CI(self.dataset_test_unique_subset_older50, ci, bootstrap_samples)
 
-    @staticmethod
-    def roc_CI(db, ci, bootstrap_samples):
-        plt.figure(figsize=(6, 6), dpi=300)
-        # db = self.dataset_test_unique
 
-        label_pred = np.stack((db.labels, db.predictions), axis=1)
-        b = bootstrap(label_pred, bootstrap_samples)
-        rcs = [roc_auc_score(x[:, 0], x[:, 1]) for x in b]
-        idx_sorted = rankdata(rcs, method="ordinal")
 
-        idx_min = int(0.05 * bootstrap_samples)
-        idx_max = int(0.95 * bootstrap_samples)
+    # @staticmethod
+    # def roc_CI(db, ci, bootstrap_samples):
+    #     plt.figure(figsize=(6, 6), dpi=300)
+    #     # db = self.dataset_test_unique
 
-        for i in range(len(idx_sorted)):
-            if idx_sorted[i] >= idx_min and idx_sorted[i] <= idx_max:
-                fpr, tpr, _ = roc_curve(b[i][:, 0], b[i][:, 1])
+    #     label_pred = np.stack((db.labels, db.predictions), axis=1)
+    #     b = bootstrap(label_pred, bootstrap_samples)
+    #     rcs = [roc_auc_score(x[:, 0], x[:, 1]) for x in b]
+    #     idx_sorted = rankdata(rcs, method="ordinal")
 
-                plt.plot(fpr, tpr, color="gainsboro", alpha=1, linewidth=0.2)
+    #     idx_min = int(0.05 * bootstrap_samples)
+    #     idx_max = int(0.95 * bootstrap_samples)
 
-        fpr, tpr, threshold = roc_curve(db.labels, db.predictions)
-        plt.plot(fpr, tpr, color=COLORS[2])
-        plt.plot([0, 1], [0, 1], color=COLORS[7], linewidth=0.5)
+    #     for i in range(len(idx_sorted)):
+    #         if idx_sorted[i] >= idx_min and idx_sorted[i] <= idx_max:
+    #             fpr, tpr, _ = roc_curve(b[i][:, 0], b[i][:, 1])
 
-        plt.ylim(0, 1)
-        plt.xlim(0, 1)
-        # axis labels
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
-        plt.show()
+    #             plt.plot(fpr, tpr, color="gainsboro", alpha=1, linewidth=0.2)
 
-    def roc_comp(self, fig_path="", ci=95, bootstrap_samples=1000):
-        plt.figure(figsize=(6, 6), dpi=300)
-        db0 = self.dataset_test_unique
-        db1 = self.dataset_test_unique_subset_older50
+    #     fpr, tpr, threshold = roc_curve(db.labels, db.predictions)
+    #     plt.plot(fpr, tpr, color=COLORS[2])
+    #     plt.plot([0, 1], [0, 1], color=COLORS[7], linewidth=0.5)
 
-        label_pred0 = np.stack((db0.labels, db0.predictions), axis=1)
-        label_pred1 = np.stack((db1.labels, db1.predictions), axis=1)
-        b0 = bootstrap(label_pred0, bootstrap_samples)
-        b1 = bootstrap(label_pred1, bootstrap_samples)
+    #     plt.ylim(0, 1)
+    #     plt.xlim(0, 1)
+    #     # axis labels
+    #     plt.xlabel("False Positive Rate")
+    #     plt.ylabel("True Positive Rate")
+    #     plt.show()
 
-        idx_sorted0 = rankdata(
-            [roc_auc_score(x[:, 0], x[:, 1]) for x in b0], method="ordinal"
-        )
-        idx_sorted1 = rankdata(
-            [roc_auc_score(x[:, 0], x[:, 1]) for x in b1], method="ordinal"
-        )
+    # def roc_comp(self, fig_path="", ci=95, bootstrap_samples=1000):
+    #     plt.figure(figsize=(6, 6), dpi=300)
+    #     db0 = self.dataset_test_unique
+    #     db1 = self.dataset_test_unique_subset_older50
 
-        idx_min = int(0.05 * bootstrap_samples)
-        idx_max = int(0.95 * bootstrap_samples)
+    #     label_pred0 = np.stack((db0.labels, db0.predictions), axis=1)
+    #     label_pred1 = np.stack((db1.labels, db1.predictions), axis=1)
+    #     b0 = bootstrap(label_pred0, bootstrap_samples)
+    #     b1 = bootstrap(label_pred1, bootstrap_samples)
 
-        for i in range(len(idx_sorted0)):
-            if idx_sorted0[i] >= idx_min and idx_sorted0[i] <= idx_max:
-                fpr, tpr, _ = roc_curve(b0[i][:, 0], b0[i][:, 1])
-                plt.plot(fpr, tpr, color="palegreen", alpha=1, linewidth=0.2)
-                # plt.plot(fpr, tpr, color=COLORS[2], alpha=.5, linewidth=.2)
+    #     idx_sorted0 = rankdata(
+    #         [roc_auc_score(x[:, 0], x[:, 1]) for x in b0], method="ordinal"
+    #     )
+    #     idx_sorted1 = rankdata(
+    #         [roc_auc_score(x[:, 0], x[:, 1]) for x in b1], method="ordinal"
+    #     )
 
-            if idx_sorted1[i] >= idx_min and idx_sorted1[i] <= idx_max:
-                fpr, tpr, _ = roc_curve(b1[i][:, 0], b1[i][:, 1])
-                plt.plot(fpr, tpr, color="lightskyblue", alpha=1, linewidth=0.2)
-                # plt.plot(fpr, tpr, color=COLORS[0], alpha=.5, linewidth=.2)
+    #     idx_min = int(0.05 * bootstrap_samples)
+    #     idx_max = int(0.95 * bootstrap_samples)
 
-        fpr, tpr, _ = roc_curve(db0.labels, db0.predictions)
-        plt.plot(fpr, tpr, color=COLORS[2])
-        fpr, tpr, _ = roc_curve(db1.labels, db1.predictions)
-        plt.plot(fpr, tpr, color=COLORS[0])
+    #     for i in range(len(idx_sorted0)):
+    #         if idx_sorted0[i] >= idx_min and idx_sorted0[i] <= idx_max:
+    #             fpr, tpr, _ = roc_curve(b0[i][:, 0], b0[i][:, 1])
+    #             plt.plot(fpr, tpr, color="palegreen", alpha=1, linewidth=0.2)
+    #             # plt.plot(fpr, tpr, color=COLORS[2], alpha=.5, linewidth=.2)
 
-        plt.plot([0, 1], [0, 1], color=COLORS[7], linewidth=0.5)
+    #         if idx_sorted1[i] >= idx_min and idx_sorted1[i] <= idx_max:
+    #             fpr, tpr, _ = roc_curve(b1[i][:, 0], b1[i][:, 1])
+    #             plt.plot(fpr, tpr, color="lightskyblue", alpha=1, linewidth=0.2)
+    #             # plt.plot(fpr, tpr, color=COLORS[0], alpha=.5, linewidth=.2)
 
-        plt.ylim(0, 1)
-        plt.xlim(0, 1)
-        # axis labels
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
+    #     fpr, tpr, _ = roc_curve(db0.labels, db0.predictions)
+    #     plt.plot(fpr, tpr, color=COLORS[2])
+    #     fpr, tpr, _ = roc_curve(db1.labels, db1.predictions)
+    #     plt.plot(fpr, tpr, color=COLORS[0])
 
-        if fig_path != "":
-            plt.tight_layout(pad=1)
-            plt.savefig(fig_path)
+    #     plt.plot([0, 1], [0, 1], color=COLORS[7], linewidth=0.5)
 
-        plt.show()
+    #     plt.ylim(0, 1)
+    #     plt.xlim(0, 1)
+    #     # axis labels
+    #     plt.xlabel("False Positive Rate")
+    #     plt.ylabel("True Positive Rate")
 
-    def precision_recall_ci(self, ci=95, bootstrap_samples=1000):
-        self.precision_recall_CI(self.dataset_test_unique, ci, bootstrap_samples)
+    #     if fig_path != "":
+    #         plt.tight_layout(pad=1)
+    #         plt.savefig(fig_path)
 
-    def precision_recall_ci_older50(self, ci=95, bootstrap_samples=1000):
-        self.precision_recall_CI(
-            self.dataset_test_unique_subset_older50, ci, bootstrap_samples
-        )
+    #     plt.show()
 
-    @staticmethod
-    def precision_recall_CI(db, ci, bootstrap_samples):
-        plt.figure(figsize=(6, 6), dpi=300)
-        # db = self.dataset_test_unique
+    # def precision_recall_ci(self, ci=95, bootstrap_samples=1000):
+    #     self.precision_recall_CI(self.dataset_test_unique, ci, bootstrap_samples)
 
-        label_pred = np.stack((db.labels, db.predictions), axis=1)
-        b = bootstrap(label_pred, bootstrap_samples)
-        rcs = [average_precision_score(x[:, 0], x[:, 1]) for x in b]
-        idx_sorted = rankdata(rcs, method="ordinal")
+    # def precision_recall_ci_older50(self, ci=95, bootstrap_samples=1000):
+    #     self.precision_recall_CI(
+    #         self.dataset_test_unique_subset_older50, ci, bootstrap_samples
+    #     )
 
-        idx_min = int(0.05 * bootstrap_samples)
-        idx_max = int(0.95 * bootstrap_samples)
+    # @staticmethod
+    # def precision_recall_CI(db, ci, bootstrap_samples):
+    #     plt.figure(figsize=(6, 6), dpi=300)
+    #     # db = self.dataset_test_unique
 
-        for i in range(len(idx_sorted)):
-            if idx_sorted[i] >= idx_min and idx_sorted[i] <= idx_max:
-                precision, recall, _ = precision_recall_curve(b[i][:, 0], b[i][:, 1])
-                plt.step(
-                    recall,
-                    precision,
-                    where="post",
-                    color="gainsboro",
-                    alpha=1,
-                    linewidth=0.2,
-                )
-                # plt.plot(fpr, tpr, color='gainsboro', alpha=1, linewidth=.2)
+    #     label_pred = np.stack((db.labels, db.predictions), axis=1)
+    #     b = bootstrap(label_pred, bootstrap_samples)
+    #     rcs = [average_precision_score(x[:, 0], x[:, 1]) for x in b]
+    #     idx_sorted = rankdata(rcs, method="ordinal")
 
-        precision, recall, _ = precision_recall_curve(db.labels, db.predictions)
-        plt.step(recall, precision, where="post", color=COLORS[2])
-        # plt.plot(fpr, tpr, color=COLORS[2])
-        # plt.plot([0,1],[0,1], color=COLORS[7], linewidth=.5)
+    #     idx_min = int(0.05 * bootstrap_samples)
+    #     idx_max = int(0.95 * bootstrap_samples)
 
-        plt.ylim(0, 1)
-        plt.xlim(0, 1)
-        # axis labels
-        plt.xlabel("Recall")
-        plt.ylabel("Precision")
-        plt.show()
+    #     for i in range(len(idx_sorted)):
+    #         if idx_sorted[i] >= idx_min and idx_sorted[i] <= idx_max:
+    #             precision, recall, _ = precision_recall_curve(b[i][:, 0], b[i][:, 1])
+    #             plt.step(
+    #                 recall,
+    #                 precision,
+    #                 where="post",
+    #                 color="gainsboro",
+    #                 alpha=1,
+    #                 linewidth=0.2,
+    #             )
+    #             # plt.plot(fpr, tpr, color='gainsboro', alpha=1, linewidth=.2)
 
-    def precision_recall_comp(self, fig_path="", ci=95, bootstrap_samples=1000):
-        plt.figure(figsize=(6, 6), dpi=300)
+    #     precision, recall, _ = precision_recall_curve(db.labels, db.predictions)
+    #     plt.step(recall, precision, where="post", color=COLORS[2])
+    #     # plt.plot(fpr, tpr, color=COLORS[2])
+    #     # plt.plot([0,1],[0,1], color=COLORS[7], linewidth=.5)
 
-        db0 = self.dataset_test_unique
-        db1 = self.dataset_test_unique_subset_older50
+    #     plt.ylim(0, 1)
+    #     plt.xlim(0, 1)
+    #     # axis labels
+    #     plt.xlabel("Recall")
+    #     plt.ylabel("Precision")
+    #     plt.show()
 
-        label_pred0 = np.stack((db0.labels, db0.predictions), axis=1)
-        label_pred1 = np.stack((db1.labels, db1.predictions), axis=1)
+    # def precision_recall_comp(self, fig_path="", ci=95, bootstrap_samples=1000):
+    #     plt.figure(figsize=(6, 6), dpi=300)
 
-        b0 = bootstrap(label_pred0, bootstrap_samples)
-        b1 = bootstrap(label_pred1, bootstrap_samples)
-        idx_sorted0 = rankdata(
-            [average_precision_score(x[:, 0], x[:, 1]) for x in b0], method="ordinal"
-        )
-        idx_sorted1 = rankdata(
-            [average_precision_score(x[:, 0], x[:, 1]) for x in b0], method="ordinal"
-        )
+    #     db0 = self.dataset_test_unique
+    #     db1 = self.dataset_test_unique_subset_older50
 
-        idx_min = int(0.05 * bootstrap_samples)
-        idx_max = int(0.95 * bootstrap_samples)
+    #     label_pred0 = np.stack((db0.labels, db0.predictions), axis=1)
+    #     label_pred1 = np.stack((db1.labels, db1.predictions), axis=1)
 
-        for i in range(len(idx_sorted0)):
-            if idx_sorted0[i] >= idx_min and idx_sorted0[i] <= idx_max:
-                precision, recall, _ = precision_recall_curve(b0[i][:, 0], b0[i][:, 1])
-                plt.step(
-                    recall,
-                    precision,
-                    where="post",
-                    color="palegreen",
-                    alpha=0.2,
-                    linewidth=0.5,
-                )
-            if idx_sorted1[i] >= idx_min and idx_sorted1[i] <= idx_max:
-                precision, recall, _ = precision_recall_curve(b1[i][:, 0], b1[i][:, 1])
-                plt.step(
-                    recall,
-                    precision,
-                    where="post",
-                    color="lightskyblue",
-                    alpha=0.2,
-                    linewidth=0.5,
-                )
+    #     b0 = bootstrap(label_pred0, bootstrap_samples)
+    #     b1 = bootstrap(label_pred1, bootstrap_samples)
+    #     idx_sorted0 = rankdata(
+    #         [average_precision_score(x[:, 0], x[:, 1]) for x in b0], method="ordinal"
+    #     )
+    #     idx_sorted1 = rankdata(
+    #         [average_precision_score(x[:, 0], x[:, 1]) for x in b0], method="ordinal"
+    #     )
 
-        precision, recall, _ = precision_recall_curve(db0.labels, db0.predictions)
-        plt.step(recall, precision, where="post", color=COLORS[2])
+    #     idx_min = int(0.05 * bootstrap_samples)
+    #     idx_max = int(0.95 * bootstrap_samples)
 
-        precision, recall, _ = precision_recall_curve(db1.labels, db1.predictions)
-        plt.step(recall, precision, where="post", color=COLORS[0])
+    #     for i in range(len(idx_sorted0)):
+    #         if idx_sorted0[i] >= idx_min and idx_sorted0[i] <= idx_max:
+    #             precision, recall, _ = precision_recall_curve(b0[i][:, 0], b0[i][:, 1])
+    #             plt.step(
+    #                 recall,
+    #                 precision,
+    #                 where="post",
+    #                 color="palegreen",
+    #                 alpha=0.2,
+    #                 linewidth=0.5,
+    #             )
+    #         if idx_sorted1[i] >= idx_min and idx_sorted1[i] <= idx_max:
+    #             precision, recall, _ = precision_recall_curve(b1[i][:, 0], b1[i][:, 1])
+    #             plt.step(
+    #                 recall,
+    #                 precision,
+    #                 where="post",
+    #                 color="lightskyblue",
+    #                 alpha=0.2,
+    #                 linewidth=0.5,
+    #             )
 
-        plt.ylim(0, 1)
-        plt.xlim(0, 1)
-        # axis labels
-        plt.xlabel("Recall")
-        plt.ylabel("Precision")
+    #     precision, recall, _ = precision_recall_curve(db0.labels, db0.predictions)
+    #     plt.step(recall, precision, where="post", color=COLORS[2])
 
-        if fig_path != "":
-            plt.tight_layout(pad=1)
-            plt.savefig(fig_path)
+    #     precision, recall, _ = precision_recall_curve(db1.labels, db1.predictions)
+    #     plt.step(recall, precision, where="post", color=COLORS[0])
 
-        plt.show()
+    #     plt.ylim(0, 1)
+    #     plt.xlim(0, 1)
+    #     # axis labels
+    #     plt.xlabel("Recall")
+    #     plt.ylabel("Precision")
 
-    def precision_recall_curves(self):
-        db = self.dataset_test_unique
-        for _, pr in db.predictions_per_age.items():
-            precision, recall, _ = precision_recall_curve(db.labels, pr)
-            plt.step(recall, precision, where="post")
-        plt.xlabel("Recall")
-        plt.ylabel("Precision")
-        plt.ylim([0.0, 1.0])
-        plt.xlim([0.0, 1.0])
-        plt.show()
+    #     if fig_path != "":
+    #         plt.tight_layout(pad=1)
+    #         plt.savefig(fig_path)
+
+    #     plt.show()
+
+    # def precision_recall_curves(self):
+    #     db = self.dataset_test_unique
+    #     for _, pr in db.predictions_per_age.items():
+    #         precision, recall, _ = precision_recall_curve(db.labels, pr)
+    #         plt.step(recall, precision, where="post")
+    #     plt.xlabel("Recall")
+    #     plt.ylabel("Precision")
+    #     plt.ylim([0.0, 1.0])
+    #     plt.xlim([0.0, 1.0])
+    #     plt.show()
 
     # Reports for subset older 50
-    def auc_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        auc = roc_auc_score(db.labels, db.predictions)
-        print("AUC = {:.3f}".format(auc))
+    # def auc_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     auc = roc_auc_score(db.labels, db.predictions)
+    #     print("AUC = {:.3f}".format(auc))
 
-    def f1_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        f1 = f1_score(db.labels, np.round(db.predictions))
-        print("F1-Score = {:.3f}".format(f1))
+    # def f1_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     f1 = f1_score(db.labels, np.round(db.predictions))
+    #     print("F1-Score = {:.3f}".format(f1))
 
-    def acc_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        acc = accuracy_score(db.labels, np.round(db.predictions))
-        print("Accuracy = {:.3f}".format(acc))
+    # def acc_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     acc = accuracy_score(db.labels, np.round(db.predictions))
+    #     print("Accuracy = {:.3f}".format(acc))
 
-    def bacc_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        bacc = balanced_accuracy_score(db.labels, np.round(db.predictions))
-        print("Balanced Accuracy = {:.3f}".format(bacc))
+    # def bacc_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     bacc = balanced_accuracy_score(db.labels, np.round(db.predictions))
+    #     print("Balanced Accuracy = {:.3f}".format(bacc))
 
-    def auc_per_age_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        aucs = {
-            age: roc_auc_score(db.labels, preds)
-            for age, preds in db.predictions_per_age.items()
-        }
-        for k, v in aucs.items():
-            print("Predictions using patient age = {} have AUC = {:.3f}".format(k, v))
+    # def auc_per_age_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     aucs = {
+    #         age: roc_auc_score(db.labels, preds)
+    #         for age, preds in db.predictions_per_age.items()
+    #     }
+    #     for k, v in aucs.items():
+    #         print("Predictions using patient age = {} have AUC = {:.3f}".format(k, v))
 
-    def f1_per_age_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        f1s = {
-            age: f1_score(db.labels, np.round(preds))
-            for age, preds in db.predictions_per_age.items()
-        }
-        for k, v in f1s.items():
-            print(
-                "Predictions using patient age = {} have F1-Score = {:.3f}".format(k, v)
-            )
+    # def f1_per_age_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     f1s = {
+    #         age: f1_score(db.labels, np.round(preds))
+    #         for age, preds in db.predictions_per_age.items()
+    #     }
+    #     for k, v in f1s.items():
+    #         print(
+    #             "Predictions using patient age = {} have F1-Score = {:.3f}".format(k, v)
+    #         )
 
-    def acc_per_age_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        accs = {
-            age: accuracy_score(db.labels, np.round(preds))
-            for age, preds in db.predictions_per_age.items()
-        }
-        for k, v in accs.items():
-            print(
-                "Predictions using patient age = {} have Accuracy = {:.3f}".format(k, v)
-            )
+    # def acc_per_age_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     accs = {
+    #         age: accuracy_score(db.labels, np.round(preds))
+    #         for age, preds in db.predictions_per_age.items()
+    #     }
+    #     for k, v in accs.items():
+    #         print(
+    #             "Predictions using patient age = {} have Accuracy = {:.3f}".format(k, v)
+    #         )
 
-    def bacc_per_age_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        baccs = {
-            age: balanced_accuracy_score(db.labels, np.round(preds))
-            for age, preds in db.predictions_per_age.items()
-        }
-        for k, v in baccs.items():
-            print(
-                "Predictions using patient age = {} have Balanced Accuracy = {:.3f}".format(
-                    k, v
-                )
-            )
+    # def bacc_per_age_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     baccs = {
+    #         age: balanced_accuracy_score(db.labels, np.round(preds))
+    #         for age, preds in db.predictions_per_age.items()
+    #     }
+    #     for k, v in baccs.items():
+    #         print(
+    #             "Predictions using patient age = {} have Balanced Accuracy = {:.3f}".format(
+    #                 k, v
+    #             )
+    #         )
 
-    def roc_curves_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        for _, pr in db.predictions_per_age.items():
-            fpr, tpr, threshold = roc_curve(db.labels, pr)
-            plt.plot(fpr, tpr)
-        plt.ylim(0, 1)
-        plt.xlim(0, 1)
-        # axis labels
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
-        plt.show()
+    # def roc_curves_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     for _, pr in db.predictions_per_age.items():
+    #         fpr, tpr, threshold = roc_curve(db.labels, pr)
+    #         plt.plot(fpr, tpr)
+    #     plt.ylim(0, 1)
+    #     plt.xlim(0, 1)
+    #     # axis labels
+    #     plt.xlabel("False Positive Rate")
+    #     plt.ylabel("True Positive Rate")
+    #     plt.show()
 
-    def precision_recall_curves_older50(self):
-        db = self.dataset_test_unique_subset_older50
-        for _, pr in db.predictions_per_age.items():
-            precision, recall, _ = precision_recall_curve(db.labels, pr)
-            plt.step(recall, precision, where="post")
-        plt.xlabel("Recall")
-        plt.ylabel("Precision")
-        plt.ylim([0.0, 1.0])
-        plt.xlim([0.0, 1.0])
-        plt.show()
+    # def precision_recall_curves_older50(self):
+    #     db = self.dataset_test_unique_subset_older50
+    #     for _, pr in db.predictions_per_age.items():
+    #         precision, recall, _ = precision_recall_curve(db.labels, pr)
+    #         plt.step(recall, precision, where="post")
+    #     plt.xlabel("Recall")
+    #     plt.ylabel("Precision")
+    #     plt.ylim([0.0, 1.0])
+    #     plt.xlim([0.0, 1.0])
+    #     plt.show()
 
     # family test
     def family_plots(self, fig_path=""):
@@ -830,7 +861,6 @@ class DiabNetReport:
         famid_sorted = np.unique(np.sort(color_by_family))
         fam_masks = [color_by_family == i for i in famid_sorted]
         patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
-        # print(patient_ages)
 
         plt.figure(figsize=(16, 32), dpi=150)
         for i in range(len(fam_masks)):
@@ -965,6 +995,38 @@ class DiabNetReport:
     #     plt.ylim(0,1)
 
     #     plt.show()
+    def plot_metrics(self, bootnum=1000, interval="HDI"):
+        metrics = OrderedDict({
+            'AUC': [self.auc, self.auc_neg_older50],
+            'AvgPrec': [self.average_precision, self.average_precision_neg_older50],
+            'BACC': [self.bacc, self.bacc_neg_older50],
+            # 'ACC': [self.acc, self.acc_neg_older50],
+            'F1': [self.f1, self.f1_neg_older50],
+            'Precision': [self.precision, self.precision_neg_older50],
+            'Sensitivity': [self.sensitivity, self.sensitivity_neg_older50],
+            'Specificity': [self.specificity, self.specificity_neg_older50],
+            'Brier': [self.brier, self.brier_neg_older50],
+            'ECE': [self.ece, self.ece_neg_older50],
+            'MCE': [self.mce, self.mce_neg_older50],
+            })
+        co = sns.color_palette("coolwarm", n_colors=33)
+        fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, dpi=300)
+        for (i,k) in enumerate(metrics.keys()):
+            v = metrics[k][0](bootnum=bootnum, interval=interval)
+            ax0.errorbar(v["value"], i, xerr=[[v["value"]-v["lower"]], [v["upper"]-v["value"]]], fmt='.', capsize=3.0, color=co[int(v["value"]*33)]) 
+            vo = metrics[k][1](bootnum=bootnum, interval=interval)
+            ax1.errorbar(vo["value"], i, xerr=[[vo["value"]-vo["lower"]], [vo["upper"]-vo["value"]]], fmt='.', capsize=3.0, color=co[int(vo["value"]*33)]) 
+
+        ax0.set_xticks(np.arange(0,1.01,.2))
+        ax1.xaxis.set_minor_locator(AutoMinorLocator(2))
+        ax1.xaxis.grid(True, which='minor')
+        ax1.set_xticks(np.arange(0,1.01,.2))
+        ax0.xaxis.set_minor_locator(AutoMinorLocator(2))
+        ax0.xaxis.grid(True, which='minor')
+        ax0.set_ylim(len(metrics), -1)
+        ax0.set_yticks(range(len(metrics)))
+        ax0.set_yticklabels(metrics.keys())
+        plt.show()
 
     def first_positives(self, fig_path=""):
         db = self.dataset_test_first_diag
@@ -1164,13 +1226,13 @@ class DiabNetReport:
     #     plt.show()
 
 
-if __name__ == "__main__":
-    report = DiabNetReport(
-        "../diabnet/models/teste-sp-soft-label_tmp.pth",
-        "positivo_1000_random_0.csv",
-        "../data/datasets/visits_sp_unique_test_positivo_1000_random_0_negatives_older60.csv",
-    )
-    report.first_positives2()
+# if __name__ == "__main__":
+#     report = DiabNetReport(
+#         "../diabnet/models/teste-sp-soft-label_tmp.pth",
+#         "positivo_1000_random_0.csv",
+#         "../data/datasets/visits_sp_unique_test_positivo_1000_random_0_negatives_older60.csv",
+#     )
+#     report.first_positives2()
     # report.auc_per_age()
     # report.f1_per_age()
     # report.acc_per_age()
