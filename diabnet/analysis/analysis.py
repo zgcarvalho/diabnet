@@ -1,5 +1,8 @@
+import matplotlib
+import seaborn
 import numpy as np
-from typing import Dict, List, Tuple
+import pandas as pd
+from typing import Dict, List, Union, Tuple, Optional
 from collections import OrderedDict
 from matplotlib.ticker import AutoMinorLocator
 import matplotlib.pyplot as plt
@@ -7,10 +10,9 @@ import seaborn as sns
 from sklearn.utils.validation import indexable
 
 COLORS = sns.color_palette("colorblind")
+
 # --------------------------------------------------------------------------- #
 # ------------------ Notebook 1: Training results analysis ------------------ #
-
-# TODO: Finish documenting these functions
 
 
 def get_metrics_from_log(fn: str) -> List[Dict[str, List[float]]]:
@@ -227,7 +229,7 @@ from sklearn.neighbors import KernelDensity
 from scipy.stats import norm
 
 def plot_metrics(r, interval="HDI"):
-    """ Plot testing metrics.
+    """Plot testing metrics.
     Parameters
     ----------
     r: DiabNetReport
@@ -236,38 +238,54 @@ def plot_metrics(r, interval="HDI"):
     -------
     figure
     """
-    metrics = OrderedDict({
-        'AUC': [r.auc, r.auc_neg_older50],
-        'AvgPrec': [r.average_precision, r.average_precision_neg_older50],
-        'BACC': [r.bacc, r.bacc_neg_older50],
-        # 'ACC': [r.acc, r.acc_neg_older50],
-        'F1': [r.f1, r.f1_neg_older50],
-        'Precision': [r.precision, r.precision_neg_older50],
-        'Sensitivity': [r.sensitivity, r.sensitivity_neg_older50],
-        'Specificity': [r.specificity, r.specificity_neg_older50],
-        'Brier': [r.brier, r.brier_neg_older50],
-        'ECE': [r.ece, r.ece_neg_older50],
-        'MCE': [r.mce, r.mce_neg_older50],
-        })
+    metrics = OrderedDict(
+        {
+            "AUC": [r.auc, r.auc_neg_older50],
+            "AvgPrec": [r.average_precision, r.average_precision_neg_older50],
+            "BACC": [r.bacc, r.bacc_neg_older50],
+            # 'ACC': [r.acc, r.acc_neg_older50],
+            "F1": [r.f1, r.f1_neg_older50],
+            "Precision": [r.precision, r.precision_neg_older50],
+            "Sensitivity": [r.sensitivity, r.sensitivity_neg_older50],
+            "Specificity": [r.specificity, r.specificity_neg_older50],
+            "Brier": [r.brier, r.brier_neg_older50],
+            "ECE": [r.ece, r.ece_neg_older50],
+            "MCE": [r.mce, r.mce_neg_older50],
+        }
+    )
     co = sns.color_palette("coolwarm", n_colors=33)
     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, dpi=300)
     ax0.set_title("Full test set", fontsize=14)
     ax1.set_title("Subset without\nnegatives younger than 50", fontsize=10)
-    for (i,k) in enumerate(metrics.keys()):
+    for (i, k) in enumerate(metrics.keys()):
         v = metrics[k][0](bootnum=1000, interval=interval)
-        ax0.errorbar(v["value"], i, xerr=[[v["value"]-v["lower"]], [v["upper"]-v["value"]]], fmt='.', capsize=3.0, color=co[int(v["value"]*33)]) 
+        ax0.errorbar(
+            v["value"],
+            i,
+            xerr=[[v["value"] - v["lower"]], [v["upper"] - v["value"]]],
+            fmt=".",
+            capsize=3.0,
+            color=co[int(v["value"] * 33)],
+        )
         vo = metrics[k][1](bootnum=1000, interval=interval)
-        ax1.errorbar(vo["value"], i, xerr=[[vo["value"]-vo["lower"]], [vo["upper"]-vo["value"]]], fmt='.', capsize=3.0, color=co[int(vo["value"]*33)]) 
+        ax1.errorbar(
+            vo["value"],
+            i,
+            xerr=[[vo["value"] - vo["lower"]], [vo["upper"] - vo["value"]]],
+            fmt=".",
+            capsize=3.0,
+            color=co[int(vo["value"] * 33)],
+        )
 
-    ax0.set_xticks(np.arange(0,1.01,.2))
+    ax0.set_xticks(np.arange(0, 1.01, 0.2))
     ax1.xaxis.set_minor_locator(AutoMinorLocator(2))
-    ax1.xaxis.grid(True, which='minor')
-    ax1.set_xticks(np.arange(0,1.01,.2))
+    ax1.xaxis.grid(True, which="minor")
+    ax1.set_xticks(np.arange(0, 1.01, 0.2))
     ax0.xaxis.set_minor_locator(AutoMinorLocator(2))
-    ax0.xaxis.grid(True, which='minor')
+    ax0.xaxis.grid(True, which="minor")
     ax0.set_ylim(len(metrics), -1)
     ax0.set_yticks(range(len(metrics)))
-    ax0.set_yticklabels(metrics.keys()) 
+    ax0.set_yticklabels(metrics.keys())
 
     return fig
 
@@ -282,11 +300,13 @@ def _hdi_idx(data, p):
             lower = data[i]
             upper = data[i + l - 1]
             lower_idx = i
-            upper_idx = i + l -1
+            upper_idx = i + l - 1
     return (lower_idx, upper_idx)
 
-def _roc_b(db, ax, num=1000, alpha=0.05, interval="CI", colors=[COLORS[2], "gainsboro"]):
-        
+def _roc_b(
+    db, ax, num=1000, alpha=0.05, interval="CI", colors=[COLORS[2], "gainsboro"]
+):
+
     # bootstrap with ensemble
     n_patients = len(db.labels)
     n_models = len(db.predictions_ensemble[0])
@@ -298,24 +318,27 @@ def _roc_b(db, ax, num=1000, alpha=0.05, interval="CI", colors=[COLORS[2], "gain
         mask_preds = np.random.choice(n_patients, n_patients)
         mask_ensemble = np.random.choice(n_models, n_models)
 
-        aucs[i] = roc_auc_score(db.labels[mask_preds], np.mean(db.predictions_ensemble[mask_preds][:, mask_ensemble],1))
+        aucs[i] = roc_auc_score(
+            db.labels[mask_preds],
+            np.mean(db.predictions_ensemble[mask_preds][:, mask_ensemble], 1),
+        )
         data[i, 0] = db.labels[mask_preds]
-        data[i, 1] = np.mean(db.predictions_ensemble[mask_preds][:, mask_ensemble],1)
+        data[i, 1] = np.mean(db.predictions_ensemble[mask_preds][:, mask_ensemble], 1)
 
     sorting_idx = np.argsort(aucs)
 
-    if interval=="HDI":
-        lower_idx, upper_idx = _hdi_idx(aucs[sorting_idx], 1-alpha)
+    if interval == "HDI":
+        lower_idx, upper_idx = _hdi_idx(aucs[sorting_idx], 1 - alpha)
     else:
         # CDI
-        lower_idx = int(num*alpha/2)
-        upper_idx = int(num*(1-alpha/2))
-    
+        lower_idx = int(num * alpha / 2)
+        upper_idx = int(num * (1 - alpha / 2))
+
     idx = sorting_idx[lower_idx:upper_idx]
 
     for i in idx:
         fpr, tpr, _ = roc_curve(data[i, 0], data[i, 1])
-        ax.plot(fpr, tpr, color=colors[1], alpha=.5, linewidth=0.2)
+        ax.plot(fpr, tpr, color=colors[1], alpha=0.5, linewidth=0.2)
 
     fpr, tpr, _ = roc_curve(db.labels, db.predictions)
     ax.plot(fpr, tpr, color=colors[0])
@@ -326,8 +349,16 @@ def _roc_b(db, ax, num=1000, alpha=0.05, interval="CI", colors=[COLORS[2], "gain
     ax.set_xlabel("False Positive Rate")
     ax.set_ylabel("True Positive Rate")
 
-def _roc_b_comp(db1, db2, ax, num=1000, alpha=0.05, interval="CI", colors=[[COLORS[2], "palegreen"],[COLORS[0], "lightskyblue"]]):
-    
+def _roc_b_comp(
+    db1,
+    db2,
+    ax,
+    num=1000,
+    alpha=0.05,
+    interval="CI",
+    colors=[[COLORS[2], "palegreen"], [COLORS[0], "lightskyblue"]],
+):
+
     # bootstrap with ensemble
     n_patients_1 = len(db1.labels)
     n_patients_2 = len(db2.labels)
@@ -345,24 +376,34 @@ def _roc_b_comp(db1, db2, ax, num=1000, alpha=0.05, interval="CI", colors=[[COLO
         mask_ensemble_1 = np.random.choice(n_models, n_models)
         mask_ensemble_2 = np.random.choice(n_models, n_models)
 
-        aucs_1[i] = roc_auc_score(db1.labels[mask_preds_1], np.mean(db1.predictions_ensemble[mask_preds_1][:, mask_ensemble_1],1))
-        aucs_2[i] = roc_auc_score(db2.labels[mask_preds_2], np.mean(db2.predictions_ensemble[mask_preds_2][:, mask_ensemble_2],1))
+        aucs_1[i] = roc_auc_score(
+            db1.labels[mask_preds_1],
+            np.mean(db1.predictions_ensemble[mask_preds_1][:, mask_ensemble_1], 1),
+        )
+        aucs_2[i] = roc_auc_score(
+            db2.labels[mask_preds_2],
+            np.mean(db2.predictions_ensemble[mask_preds_2][:, mask_ensemble_2], 1),
+        )
         data_1[i, 0] = db1.labels[mask_preds_1]
         data_2[i, 0] = db2.labels[mask_preds_2]
-        data_1[i, 1] = np.mean(db1.predictions_ensemble[mask_preds_1][:, mask_ensemble_1],1)
-        data_2[i, 1] = np.mean(db2.predictions_ensemble[mask_preds_2][:, mask_ensemble_2],1)
+        data_1[i, 1] = np.mean(
+            db1.predictions_ensemble[mask_preds_1][:, mask_ensemble_1], 1
+        )
+        data_2[i, 1] = np.mean(
+            db2.predictions_ensemble[mask_preds_2][:, mask_ensemble_2], 1
+        )
 
     sorting_idx_1 = np.argsort(aucs_1)
     sorting_idx_2 = np.argsort(aucs_2)
 
-    if interval=="HDI":
-        lower_idx_1, upper_idx_1 = _hdi_idx(aucs_1[sorting_idx_1], 1-alpha)
-        lower_idx_2, upper_idx_2 = _hdi_idx(aucs_2[sorting_idx_2], 1-alpha)
+    if interval == "HDI":
+        lower_idx_1, upper_idx_1 = _hdi_idx(aucs_1[sorting_idx_1], 1 - alpha)
+        lower_idx_2, upper_idx_2 = _hdi_idx(aucs_2[sorting_idx_2], 1 - alpha)
     else:
         # CDI
-        lower_idx_1 = int(num*alpha/2)
+        lower_idx_1 = int(num * alpha / 2)
         lower_idx_2 = lower_idx_1
-        upper_idx_1 = int(num*(1-alpha/2))
+        upper_idx_1 = int(num * (1 - alpha / 2))
         upper_idx_2 = upper_idx_1
 
     idx_1 = sorting_idx_1[lower_idx_1:upper_idx_1]
@@ -370,9 +411,9 @@ def _roc_b_comp(db1, db2, ax, num=1000, alpha=0.05, interval="CI", colors=[[COLO
 
     for i in range(len(idx_1)):
         fpr, tpr, _ = roc_curve(data_1[idx_1[i], 0], data_1[idx_1[i], 1])
-        ax.plot(fpr, tpr, color=colors[0][1], alpha=.3, linewidth=0.1)
+        ax.plot(fpr, tpr, color=colors[0][1], alpha=0.3, linewidth=0.1)
         fpr, tpr, _ = roc_curve(data_2[idx_2[i], 0], data_2[idx_2[i], 1])
-        ax.plot(fpr, tpr, color=colors[1][1], alpha=.2, linewidth=0.1)
+        ax.plot(fpr, tpr, color=colors[1][1], alpha=0.2, linewidth=0.1)
 
     fpr, tpr, _ = roc_curve(db1.labels, db1.predictions)
     ax.plot(fpr, tpr, color=colors[0][0])
@@ -389,24 +430,42 @@ def plot_roc(r, interval="HDI"):
     fig = plt.figure(figsize=(6, 6), dpi=300)
     ax1 = fig.add_subplot(111)
     c = [COLORS[2], "gainsboro"]
-    _roc_b(r.dataset_test_unique, ax1, num=2000, alpha=0.05, interval=interval, colors=c)
+    _roc_b(
+        r.dataset_test_unique, ax1, num=2000, alpha=0.05, interval=interval, colors=c
+    )
     # return fig
 
 def plot_roc_neg_older50(r, interval="HDI"):
     fig = plt.figure(figsize=(6, 6), dpi=300)
     ax1 = fig.add_subplot(111)
     c = [COLORS[0], "gainsboro"]
-    _roc_b(r.dataset_test_unique_subset_neg_older50, ax1, num=2000, alpha=0.05, interval=interval, colors=c)
+    _roc_b(
+        r.dataset_test_unique_subset_neg_older50,
+        ax1,
+        num=2000,
+        alpha=0.05,
+        interval=interval,
+        colors=c,
+    )
     # return fig
 
 def plot_roc_comp(r, interval="HDI"):
     fig = plt.figure(figsize=(6, 6), dpi=300)
     ax1 = fig.add_subplot(111)
-    _roc_b_comp(r.dataset_test_unique, r.dataset_test_unique_subset_neg_older50, ax1, num=1000, alpha=0.05, interval=interval)
+    _roc_b_comp(
+        r.dataset_test_unique,
+        r.dataset_test_unique_subset_neg_older50,
+        ax1,
+        num=1000,
+        alpha=0.05,
+        interval=interval,
+    )
     # return fig
 
-def _precision_recall_b(db, ax, num=1000, alpha=0.05, interval="CI", colors=[COLORS[2], "gainsboro"]):
-    
+def _precision_recall_b(
+    db, ax, num=1000, alpha=0.05, interval="CI", colors=[COLORS[2], "gainsboro"]
+):
+
     # bootstrap with ensemble
     n_patients = len(db.labels)
     n_models = len(db.predictions_ensemble[0])
@@ -418,19 +477,22 @@ def _precision_recall_b(db, ax, num=1000, alpha=0.05, interval="CI", colors=[COL
         mask_preds = np.random.choice(n_patients, n_patients)
         mask_ensemble = np.random.choice(n_models, n_models)
 
-        avgps[i] = average_precision_score(db.labels[mask_preds], np.mean(db.predictions_ensemble[mask_preds][:, mask_ensemble],1))
+        avgps[i] = average_precision_score(
+            db.labels[mask_preds],
+            np.mean(db.predictions_ensemble[mask_preds][:, mask_ensemble], 1),
+        )
         data[i, 0] = db.labels[mask_preds]
-        data[i, 1] = np.mean(db.predictions_ensemble[mask_preds][:, mask_ensemble],1)
+        data[i, 1] = np.mean(db.predictions_ensemble[mask_preds][:, mask_ensemble], 1)
 
     sorting_idx = np.argsort(avgps)
 
-    if interval=="HDI":
-        lower_idx, upper_idx = _hdi_idx(avgps[sorting_idx], 1-alpha)
+    if interval == "HDI":
+        lower_idx, upper_idx = _hdi_idx(avgps[sorting_idx], 1 - alpha)
     else:
         # CDI
-        lower_idx = int(num*alpha/2)
-        upper_idx = int(num*(1-alpha/2))
-    
+        lower_idx = int(num * alpha / 2)
+        upper_idx = int(num * (1 - alpha / 2))
+
     idx = sorting_idx[lower_idx:upper_idx]
 
     for i in idx:
@@ -440,7 +502,7 @@ def _precision_recall_b(db, ax, num=1000, alpha=0.05, interval="CI", colors=[COL
             precision,
             where="post",
             color=colors[1],
-            alpha=.5,
+            alpha=0.5,
             linewidth=0.2,
         )
 
@@ -453,8 +515,16 @@ def _precision_recall_b(db, ax, num=1000, alpha=0.05, interval="CI", colors=[COL
     ax.set_xlabel("Recall")
     ax.set_ylabel("Precision")
 
-def _precision_recall_b_comp(db1, db2, ax, num=1000, alpha=0.05, interval="CI", colors=[[COLORS[2], "palegreen"],[COLORS[0], "lightskyblue"]]):
-    
+def _precision_recall_b_comp(
+    db1,
+    db2,
+    ax,
+    num=1000,
+    alpha=0.05,
+    interval="CI",
+    colors=[[COLORS[2], "palegreen"], [COLORS[0], "lightskyblue"]],
+):
+
     # bootstrap with ensemble
     n_patients_1 = len(db1.labels)
     n_patients_2 = len(db2.labels)
@@ -472,46 +542,60 @@ def _precision_recall_b_comp(db1, db2, ax, num=1000, alpha=0.05, interval="CI", 
         mask_ensemble_1 = np.random.choice(n_models, n_models)
         mask_ensemble_2 = np.random.choice(n_models, n_models)
 
-        avgs_1[i] = average_precision_score(db1.labels[mask_preds_1], np.mean(db1.predictions_ensemble[mask_preds_1][:, mask_ensemble_1],1))
-        avgs_2[i] = average_precision_score(db2.labels[mask_preds_2], np.mean(db2.predictions_ensemble[mask_preds_2][:, mask_ensemble_2],1))
+        avgs_1[i] = average_precision_score(
+            db1.labels[mask_preds_1],
+            np.mean(db1.predictions_ensemble[mask_preds_1][:, mask_ensemble_1], 1),
+        )
+        avgs_2[i] = average_precision_score(
+            db2.labels[mask_preds_2],
+            np.mean(db2.predictions_ensemble[mask_preds_2][:, mask_ensemble_2], 1),
+        )
         data_1[i, 0] = db1.labels[mask_preds_1]
         data_2[i, 0] = db2.labels[mask_preds_2]
-        data_1[i, 1] = np.mean(db1.predictions_ensemble[mask_preds_1][:, mask_ensemble_1],1)
-        data_2[i, 1] = np.mean(db2.predictions_ensemble[mask_preds_2][:, mask_ensemble_2],1)
+        data_1[i, 1] = np.mean(
+            db1.predictions_ensemble[mask_preds_1][:, mask_ensemble_1], 1
+        )
+        data_2[i, 1] = np.mean(
+            db2.predictions_ensemble[mask_preds_2][:, mask_ensemble_2], 1
+        )
 
     sorting_idx_1 = np.argsort(avgs_1)
     sorting_idx_2 = np.argsort(avgs_2)
 
-    if interval=="HDI":
-        lower_idx_1, upper_idx_1 = _hdi_idx(avgs_1[sorting_idx_1], 1-alpha)
-        lower_idx_2, upper_idx_2 = _hdi_idx(avgs_2[sorting_idx_2], 1-alpha)
+    if interval == "HDI":
+        lower_idx_1, upper_idx_1 = _hdi_idx(avgs_1[sorting_idx_1], 1 - alpha)
+        lower_idx_2, upper_idx_2 = _hdi_idx(avgs_2[sorting_idx_2], 1 - alpha)
     else:
         # CDI
-        lower_idx_1 = int(num*alpha/2)
+        lower_idx_1 = int(num * alpha / 2)
         lower_idx_2 = lower_idx_1
-        upper_idx_1 = int(num*(1-alpha/2))
+        upper_idx_1 = int(num * (1 - alpha / 2))
         upper_idx_2 = upper_idx_1
 
     idx_1 = sorting_idx_1[lower_idx_1:upper_idx_1]
     idx_2 = sorting_idx_2[lower_idx_2:upper_idx_2]
 
     for i in range(len(idx_1)):
-        precision, recall, _ = precision_recall_curve(data_1[idx_1[i], 0], data_1[idx_1[i], 1])
+        precision, recall, _ = precision_recall_curve(
+            data_1[idx_1[i], 0], data_1[idx_1[i], 1]
+        )
         ax.step(
             recall,
             precision,
             where="post",
             color=colors[0][1],
-            alpha=.2,
+            alpha=0.2,
             linewidth=0.1,
         )
-        precision, recall, _ = precision_recall_curve(data_2[idx_2[i], 0], data_2[idx_2[i], 1])
+        precision, recall, _ = precision_recall_curve(
+            data_2[idx_2[i], 0], data_2[idx_2[i], 1]
+        )
         ax.step(
             recall,
             precision,
             where="post",
             color=colors[1][1],
-            alpha=.3,
+            alpha=0.3,
             linewidth=0.1,
         )
 
@@ -530,14 +614,23 @@ def plot_precision_recall(r, interval="HDI"):
     fig = plt.figure(figsize=(6, 6), dpi=300)
     ax1 = fig.add_subplot(111)
     c = [COLORS[2], "gainsboro"]
-    _precision_recall_b(r.dataset_test_unique, ax1, num=2000, alpha=0.05, interval=interval, colors=c)
+    _precision_recall_b(
+        r.dataset_test_unique, ax1, num=2000, alpha=0.05, interval=interval, colors=c
+    )
     # return fig
 
 def plot_precision_recall_neg_older50(r, interval="HDI"):
     fig = plt.figure(figsize=(6, 6), dpi=300)
     ax1 = fig.add_subplot(111)
     c = [COLORS[0], "gainsboro"]
-    _precision_recall_b(r.dataset_test_unique_subset_neg_older50, ax1, num=2000, alpha=0.05, interval=interval, colors=c)
+    _precision_recall_b(
+        r.dataset_test_unique_subset_neg_older50,
+        ax1,
+        num=2000,
+        alpha=0.05,
+        interval=interval,
+        colors=c,
+    )
 
 def plot_precision_recall_comp(r, interval="HDI"):
 
@@ -779,3 +872,177 @@ def parents_plots(self, fig_path=""):
         plt.savefig(fig_path)
 
     plt.show()
+    # _precision_recall_b_comp(
+    #     r.dataset_test_unique,
+    #     r.dataset_test_unique_subset_neg_older50,
+    #     ax1,
+    #     num=1000,
+    #     alpha=0.05,
+    #     interval=interval,
+    # )
+    # # return fig
+
+
+# --------------------------------------------------------------------------- #
+# -------------- Notebook 4: Family Cross Validation analysis --------------- #
+
+def _data2barplot(
+    data: pd.DataFrame, selection: Optional[List[str]] = None, orient: str = "index"
+) -> Tuple[Dict[str, List[float]], List[str]]:
+    """Prepara pandas.DataFrame to barplot.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data of family cross-validation analysis.
+    selection : List[str], optional
+        A list of metrics to be ploted. I must only contain
+        header in data, by default None.
+    orient : str {'dict', 'index'}, optional
+        Determines the type of the values of the dictionary, by default `index`.
+
+            * 'dict' : dict like {column -> {index -> value}}
+
+            * 'index' (default) : dict like {index -> {column -> value}}
+
+    Returns
+    -------
+    data : Dict[str, List[float]]
+        Data prepared to barplot function.
+    labels : List[str]
+        A list of labels to barplot function.
+
+    Raises
+    ------
+    TypeError
+        "`data` must be a pandas.DataFrame.
+    ValueError
+        `selection` must be columns of `data`.
+    TypeError
+        `orient` must be `dict` or `index`.
+    ValueError
+        `orient` must be `dict` or `index`.
+    """
+    # Check arguments
+    if type(data) not in [pd.DataFrame]:
+        raise TypeError("`data` must be a pandas.DataFrame.")
+    if selection is not None:
+        if type(selection) not in [list]:
+            raise TypeError("`selection` must be a list.")
+        elif not set(selection).issubset(list(data.columns)):
+            raise ValueError("`selection` must be columns of `data`.")
+        # Apply selection
+        data = data[selection]
+    if type(orient) not in [str]:
+        raise TypeError("`orient` must be `dict` or `index`.")
+    elif orient not in ["dict", "index"]:
+        raise ValueError("`orient` must be `dict` or `index`.")
+
+    # Convert data to dict
+    tmp = data.to_dict(orient)
+
+    # Get labels
+    labels = list(tmp[list(tmp)[0]].keys())
+
+    # Prepare data for barplot
+    data = {key: list(tmp[key].values()) for key in tmp.keys()}
+
+    return data, labels
+
+
+def barplot(
+    ax,
+    data: Dict[str, List[float]],
+    selection: Optional[List[str]] = None,
+    labels: Optional[List[str]] = None,
+    rotation: int = 0,
+    ha: str = "center",
+    orient: str = "index",
+    colors: Optional[Union[List[float], seaborn.palettes._ColorPalette]] = None,
+    total_width: float = 0.9,
+    single_width: float = 1,
+    legend: bool = True,
+):
+    """Draws a bar plot with multiple bars per data point.
+
+    Parameters
+    ----------
+    ax : matplotlib.pyplot.axis
+        The axis we want to draw our plot on.
+    data : Dict[str, List[float]]
+        A dictionary containing the data we want to plot. Keys are the names of the
+        data, the items is a list of the values.
+    selection : List[str], optional
+        A list of metrics to be ploted. I must only contain
+        header in data, by default None.
+    labels : List[str], optional
+        A list of labels to use as axis ticks. If we want to remove xticks, set
+        to []. If None, use labels from _data2barplot, by default None.
+    rotation : int, optional
+        Rotation (degrees) of xticks, by default 0.
+    ha : str {'left', 'center', 'right'}, optional
+        Horizontal aligments of xticks, by default `center`.
+    orient : str {'dict', 'index'}, optional
+        Determines the type of the values of the dictionary, by default `index`.
+
+            * 'dict' : dict like {column -> {index -> value}}
+
+            * 'index' (default) : dict like {index -> {column -> value}}
+    colors : Union[List[float], seaborn.palettes._ColorPalette], optional
+        A list of colors which are used for the bars. If None, the colors
+        will be the standard matplotlib color cylel, by default None.
+    total_width : float, optional
+        The width of a bar group. 0.9 means that 90% of the x-axis is covered
+        by bars and 10% will be spaces between the bars, by default 0.9.
+    single_width: float, optional
+        The relative width of a single bar within a group. 1 means the bars
+        will touch eachother within a group, values less than 1 will make
+        these bars thinner, by default 1.
+    legend: bool, optional
+        If this is set to true, a legend will be added to the axis, by default True.
+    """
+    from matplotlib import pyplot as plt
+
+    # Check if colors where provided, otherwhise use the default color cycle
+    if colors is None:
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    # Prepare data
+    if labels is None:
+        data, labels = _data2barplot(data, selection=selection, orient=orient)
+    else:
+        data, _ = _data2barplot(data, selection=selection, orient=orient)
+
+    # Number of bars per group
+    n_bars = len(data)
+
+    # The width of a single bar
+    bar_width = total_width / n_bars
+
+    # List containing handles for the drawn bars, used for the legend
+    bars = []
+
+    # Iterate over all data
+    for i, (name, values) in enumerate(data.items()):
+        # The offset in x direction of that bar
+        x_offset = (i - n_bars / 2) * bar_width + bar_width / 2
+
+        # Draw a bar for every value of that type
+        for x, y in enumerate(values):
+            bar = ax.bar(
+                x + x_offset,
+                y,
+                width=bar_width * single_width,
+                color=colors[i % len(colors)],
+            )
+
+        # Add a handle to the last drawn bar, which we'll need for the legend
+        bars.append(bar[0])
+
+    # Set x ticks
+    ax.set_xticks(range(len(labels)), minor=False)
+    ax.set_xticklabels(labels, rotation=rotation, ha=ha)
+
+    # Draw legend if we need
+    if legend:
+        ax.legend(bars, data.keys())

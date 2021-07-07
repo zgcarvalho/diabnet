@@ -48,10 +48,11 @@ class Predictor(object):
             raise TypeError("`ensemble` must be a diabnet.ensemble.Ensemble.")
         if type(feature_names) not in [list]:
             raise TypeError("`feature_names` must be a list of strings.")
-        if type(negatives_csv) not in [str]:
-            raise TypeError("`negatives_csv` must be a string.")
-        if not negatives_csv.endswith(".csv"):
-            raise ValueError("`negatives_csv` must be a CSV-formatted file.")
+        if negatives_csv is not None:
+            if type(negatives_csv) not in [str]:
+                raise TypeError("`negatives_csv` must be a string.")
+            elif not negatives_csv.endswith(".csv"):
+                raise ValueError("`negatives_csv` must be a CSV-formatted file.")
         # TODO: Assert len feature_names is equal to model input size
         # ??
 

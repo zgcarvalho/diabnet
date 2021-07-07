@@ -254,9 +254,7 @@ class DiabNetReport:
         )
         if use_negatives:
             negatives_csv = (
-                "../data/datasets/visits_sp_unique_test_"
-                + data_suffix.strip(".csv")
-                + "_negatives_older60.csv"
+                "../data/datasets/visits_sp_unique_test_positivo_1000_random_0_negatives_older60.csv"
             )
         else:
             negatives_csv = None
