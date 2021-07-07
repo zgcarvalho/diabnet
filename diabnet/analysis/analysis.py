@@ -65,7 +65,6 @@ def get_metrics_from_log(fn: str) -> List[Dict[str, List[float]]]:
 
     return ensemble
 
-
 def calculate_stats(
     ensemble: List[Dict[str, List[float]]]
 ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, np.ndarray]]:
@@ -109,7 +108,6 @@ def calculate_stats(
         max95[k] = np.asarray(max95[k])
 
     return mean, min5, max95
-
 
 def plot_loss(data, ax, color) -> None:
     """Plot loss for training and validation subsets.
@@ -163,7 +161,6 @@ def plot_loss(data, ax, color) -> None:
 
     return ax
 
-
 def plot_bacc(data, ax, colors):
     """Plot balanced accuracy.
 
@@ -210,10 +207,10 @@ def plot_bacc(data, ax, colors):
 
     return ax
 
-
 # --------------------------------------------------------------------------- #
 # ------------------- Notebook 2: Report metrics ensemble ------------------- #
 
+import matplotlib as mpl
 from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
@@ -226,6 +223,8 @@ from sklearn.metrics import (
     # precision_score,
     # recall_score,  # if pos_label = (sensitivity or TPR) if neg_label = (specificity or TNR)
 )
+from sklearn.neighbors import KernelDensity
+from scipy.stats import norm
 
 def plot_metrics(r, interval="HDI"):
     """ Plot testing metrics.
@@ -541,7 +540,242 @@ def plot_precision_recall_neg_older50(r, interval="HDI"):
     _precision_recall_b(r.dataset_test_unique_subset_neg_older50, ax1, num=2000, alpha=0.05, interval=interval, colors=c)
 
 def plot_precision_recall_comp(r, interval="HDI"):
+
     fig = plt.figure(figsize=(6, 6), dpi=300)
     ax1 = fig.add_subplot(111)
     _precision_recall_b_comp(r.dataset_test_unique, r.dataset_test_unique_subset_neg_older50, ax1, num=1000, alpha=0.05, interval=interval)
     # return fig
+
+def _kde_plot(x,ax,color):
+    if len(x) > 100:
+        x = x[::100]
+    x_d = np.linspace(0, 1, 1000)
+
+    kde = KernelDensity(bandwidth=0.11, kernel='gaussian', metric='euclidean')
+    kde.fit(x[:, None])
+
+    # score_samples returns the log of the probability density
+    logprob = kde.score_samples(x_d[:, None])
+    prob = np.exp(logprob)
+
+    ax.plot(x_d, prob, color=color)
+
+def plot_first_positives_lines(r, age_separator=50):
+    db = r.dataset_test_first_diag
+    pos_mask = db.labels == 1
+    pred = np.stack([db.predictions_per_age[age][pos_mask] for age in range(20,80,5)], axis=0)
+    age_above_50 = db.df.AGE.values[pos_mask] >= age_separator
+    age_below_50 = db.df.AGE.values[pos_mask] < age_separator
+
+    neg = r.negatives_older60
+    pred_below_50 = [np.array(x) for x in pred[:,age_below_50]]
+    pred_below_50 = [x for x in pred[:,age_below_50]]
+    pred_above_50 = [np.array(x) for x in pred[:,age_above_50]]
+
+    # color_boxplot = sns.color_palette("copper_r", n_colors=14)
+    color_boxplot = sns.color_palette("BrBG_r", n_colors=12)
+
+    # bandwidth(pred_below_50[4])
+
+    # fig, (ax0, ax1, ax2) = plt.figure(figsize=(15,5), dpi=300)
+    fig, (ax0, ax1, ax2) = plt.subplots(ncols=3, sharey=False, dpi=300, figsize=(16,5))
+    # ax0 = plt.subplot(131)
+    for i in range(12):
+        kde0 = _kde_plot(pred_below_50[i], ax0, color=color_boxplot[i])
+    ax0.set_title(f"positives\n(age < {age_separator} )")
+    ax0.set_ylabel("density")
+    ax0.set_xlabel("probability")
+    ax0.set_xlim(-0.01, 1.01)
+    ax0.set_ylim(-0.0001, 3.6)
+
+    # ax1.subplot(132)
+    for i in range(12):
+        kde1 = _kde_plot(pred_above_50[i], ax1, color=color_boxplot[i])
+    ax1.set_title(f"positives\n(age >= {age_separator} )")
+    ax1.set_ylabel("density")
+    ax1.set_xlabel("probability")
+    ax1.set_xlim(-0.01, 1.01)
+    ax1.set_ylim(-0.0001, 3.6)
+    
+    # ax2.subplot(133)
+    for i in range(12):
+        kde2 = _kde_plot(neg[0][i], ax2, color=color_boxplot[i])
+    ax2.set_title("negatives\n(age >= 60)")
+    ax2.set_ylabel("density")
+    ax2.set_xlabel("probability")
+    ax2.set_xlim(-0.01, 1.01)
+    ax2.set_ylim(-0.0001, 3.6)
+    fig.tight_layout(pad=1)
+
+ 
+
+    cmap = mpl.colors.ListedColormap([color_boxplot[i] for i in range(12)])
+    norm = mpl.colors.Normalize(vmin=17.5, vmax=77.5)
+    cbax = fig.add_axes([1.0, 0.13, 0.02, 0.76]) 
+    fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+                cax=cbax, orientation='vertical', label='Age (model input)',ticks=np.arange(20,80,5))
+
+    # return fig
+
+def plot_first_positives_boxplot(r, age_separator=50):
+    db = r.dataset_test_first_diag
+    pos_mask = db.labels == 1
+    pred = np.stack([db.predictions_per_age[age][pos_mask] for age in range(20,80,5)], axis=0)
+    age_above_50 = db.df.AGE.values[pos_mask] >= age_separator
+    age_below_50 = db.df.AGE.values[pos_mask] < age_separator
+
+    neg = r.negatives_older60
+    pred_below_50 = [np.array(x) for x in pred[:,age_below_50]]
+    pred_below_50 = [x for x in pred[:,age_below_50]]
+    pred_above_50 = [np.array(x) for x in pred[:,age_above_50]]
+
+    color_boxplot = sns.color_palette("Spectral_r", n_colors=20)
+    # color_boxplot = sns.color_palette("cool", n_colors=20)
+
+    fig, (ax0, ax1, ax2) = plt.subplots(ncols=3, sharey=False, dpi=300, figsize=(16,5))
+    # box 01
+    ax0.boxplot(
+            pred_below_50,
+            showfliers=False,
+            patch_artist=True,
+            labels=[i for i in neg[1]],
+            medianprops=dict(linewidth=2.5, color="black"),
+    )
+    colors = [color_boxplot[int(np.mean(a) * 20)] for a in pred_below_50]
+    for (i,box) in enumerate(ax0.artists):
+        box.set_facecolor(colors[i])
+    ax0.set_title("positives\n(age < 50 )")
+    ax0.set_ylabel("probability")
+    ax0.set_xlabel("age (model input)")
+    ax0.set_ylim(0, 1)
+
+    ax1.boxplot(
+            pred_above_50,
+            showfliers=False,
+            patch_artist=True,
+            labels=[i for i in neg[1]],
+            medianprops=dict(linewidth=2.5, color="black"),
+    )
+    colors = [color_boxplot[int(np.mean(a) * 20)] for a in pred_above_50]
+    for (i,box) in enumerate(ax1.artists):
+        box.set_facecolor(colors[i])
+    ax1.set_title("positives\n(age >= 50 )")
+    ax1.set_ylabel("probability")
+    ax1.set_xlabel("age (model input)")
+    ax1.set_ylim(0, 1)
+
+    ax2.boxplot(
+            neg[0],
+            showfliers=False,
+            patch_artist=True,
+            labels=[i for i in neg[1]],
+            medianprops=dict(linewidth=2.5, color="black"),
+    )
+    colors = [color_boxplot[int(np.mean(a) * 20)] for a in neg[0]]
+    for (i,box) in enumerate(ax2.artists):
+        box.set_facecolor(colors[i])
+    ax2.set_title("negatives\n(age >= 60)")
+    ax2.set_ylabel("probability")
+    ax2.set_xlabel("age (model input)")
+    ax2.set_ylim(0, 1)
+
+    fig.tight_layout(pad=1)
+
+    cmap = mpl.colors.ListedColormap([color_boxplot[i] for i in range(20)])
+    norm = mpl.colors.Normalize(vmin=0, vmax=1)
+    cbax = fig.add_axes([1.0, 0.13, 0.02, 0.76]) 
+    fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+                cax=cbax, orientation='vertical', label='E(x)',ticks=np.arange(0,1.01,.1))
+    
+    # return fig
+
+def plot_core_family(r):
+    db = r.dataset_test_unique
+    df = db.df.set_index("id")
+    # print(df)
+    df_fathers = df[df.index.isin(df.fa)]
+    df_mothers = df[df.index.isin(df.mo)]
+    df_children = df[
+        (df.fa.isin(df_fathers.index)) & (df.mo.isin(df_mothers.index))
+    ]
+    # print(df_children)
+    parents = df_children[["fa", "mo"]].groupby(["fa", "mo"]).count().index
+    predictions = np.stack(
+        [db.predictions_per_age[age] for age in range(20, 80, 5)], axis=1
+    )
+    patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
+
+def parents_plots(self, fig_path=""):
+    db = self.dataset_test_unique
+    df = db.df.set_index("id")
+    # print(df)
+    df_fathers = df[df.index.isin(df.fa)]
+    df_mothers = df[df.index.isin(df.mo)]
+    df_children = df[
+        (df.fa.isin(df_fathers.index)) & (df.mo.isin(df_mothers.index))
+    ]
+    # print(df_children)
+    parents = df_children[["fa", "mo"]].groupby(["fa", "mo"]).count().index
+    predictions = np.stack(
+        [db.predictions_per_age[age] for age in range(20, 80, 5)], axis=1
+    )
+    patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
+    # print(patient_ages)
+
+    plt.figure(figsize=(16, 36), dpi=150)
+    for i in range(len(parents)):
+        ax1 = plt.subplot(9, 4, i + 1)
+        plt.title("father {} mother {}".format(parents[i][0], parents[i][1]))
+        father_mask = (db.df["id"] == parents[i][0]).values
+        mother_mask = (db.df["id"] == parents[i][1]).values
+        pos_mask = db.labels == 1
+        neg_mask = db.labels == 0
+        children_mask = np.logical_and(
+            (db.df["fa"] == parents[i][0]).values,
+            (db.df["mo"] == parents[i][1]).values,
+        )
+
+        m_pos_fa = np.logical_and(pos_mask, father_mask)
+        m_pos_mo = np.logical_and(pos_mask, mother_mask)
+        m_pos_chi = np.logical_and(pos_mask, children_mask)
+        m_neg_fa = np.logical_and(neg_mask, father_mask)
+        m_neg_mo = np.logical_and(neg_mask, mother_mask)
+        m_neg_chi = np.logical_and(neg_mask, children_mask)
+
+        if True in m_pos_fa:
+            plt.plot(np.transpose(predictions[m_pos_fa, :]), color="blue")
+        if True in m_pos_mo:
+            plt.plot(np.transpose(predictions[m_pos_mo, :]), color="red")
+        if True in m_pos_chi:
+            plt.plot(np.transpose(predictions[m_pos_chi, :]), color="green")
+        if True in m_neg_fa:
+            plt.plot(np.transpose(predictions[m_neg_fa, :]), color="blue", ls="--")
+        if True in m_neg_mo:
+            plt.plot(np.transpose(predictions[m_neg_mo, :]), color="red", ls="--")
+        if True in m_neg_chi:
+            plt.plot(
+                np.transpose(predictions[m_neg_chi, :]), color="green", ls="--"
+            )
+        plt.scatter(
+            (patient_ages[father_mask] - 20) / 5,
+            db.predictions[father_mask],
+            c="blue",
+        )
+        plt.scatter(
+            (patient_ages[mother_mask] - 20) / 5,
+            db.predictions[mother_mask],
+            c="red",
+        )
+        plt.scatter(
+            (patient_ages[children_mask] - 20) / 5,
+            db.predictions[children_mask],
+            c="green",
+        )
+        plt.ylim(0, 1)
+        plt.xticks(range(12), np.arange(20, 80, 5))
+
+    if fig_path != "":
+        plt.tight_layout(pad=1)
+        plt.savefig(fig_path)
+
+    plt.show()

@@ -995,115 +995,115 @@ class DiabNetReport:
     #     plt.ylim(0,1)
 
     #     plt.show()
-    def plot_metrics(self, bootnum=1000, interval="HDI"):
-        metrics = OrderedDict({
-            'AUC': [self.auc, self.auc_neg_older50],
-            'AvgPrec': [self.average_precision, self.average_precision_neg_older50],
-            'BACC': [self.bacc, self.bacc_neg_older50],
-            # 'ACC': [self.acc, self.acc_neg_older50],
-            'F1': [self.f1, self.f1_neg_older50],
-            'Precision': [self.precision, self.precision_neg_older50],
-            'Sensitivity': [self.sensitivity, self.sensitivity_neg_older50],
-            'Specificity': [self.specificity, self.specificity_neg_older50],
-            'Brier': [self.brier, self.brier_neg_older50],
-            'ECE': [self.ece, self.ece_neg_older50],
-            'MCE': [self.mce, self.mce_neg_older50],
-            })
-        co = sns.color_palette("coolwarm", n_colors=33)
-        fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, dpi=300)
-        for (i,k) in enumerate(metrics.keys()):
-            v = metrics[k][0](bootnum=bootnum, interval=interval)
-            ax0.errorbar(v["value"], i, xerr=[[v["value"]-v["lower"]], [v["upper"]-v["value"]]], fmt='.', capsize=3.0, color=co[int(v["value"]*33)]) 
-            vo = metrics[k][1](bootnum=bootnum, interval=interval)
-            ax1.errorbar(vo["value"], i, xerr=[[vo["value"]-vo["lower"]], [vo["upper"]-vo["value"]]], fmt='.', capsize=3.0, color=co[int(vo["value"]*33)]) 
+    # def plot_metrics(self, bootnum=1000, interval="HDI"):
+    #     metrics = OrderedDict({
+    #         'AUC': [self.auc, self.auc_neg_older50],
+    #         'AvgPrec': [self.average_precision, self.average_precision_neg_older50],
+    #         'BACC': [self.bacc, self.bacc_neg_older50],
+    #         # 'ACC': [self.acc, self.acc_neg_older50],
+    #         'F1': [self.f1, self.f1_neg_older50],
+    #         'Precision': [self.precision, self.precision_neg_older50],
+    #         'Sensitivity': [self.sensitivity, self.sensitivity_neg_older50],
+    #         'Specificity': [self.specificity, self.specificity_neg_older50],
+    #         'Brier': [self.brier, self.brier_neg_older50],
+    #         'ECE': [self.ece, self.ece_neg_older50],
+    #         'MCE': [self.mce, self.mce_neg_older50],
+    #         })
+    #     co = sns.color_palette("coolwarm", n_colors=33)
+    #     fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, dpi=300)
+    #     for (i,k) in enumerate(metrics.keys()):
+    #         v = metrics[k][0](bootnum=bootnum, interval=interval)
+    #         ax0.errorbar(v["value"], i, xerr=[[v["value"]-v["lower"]], [v["upper"]-v["value"]]], fmt='.', capsize=3.0, color=co[int(v["value"]*33)]) 
+    #         vo = metrics[k][1](bootnum=bootnum, interval=interval)
+    #         ax1.errorbar(vo["value"], i, xerr=[[vo["value"]-vo["lower"]], [vo["upper"]-vo["value"]]], fmt='.', capsize=3.0, color=co[int(vo["value"]*33)]) 
 
-        ax0.set_xticks(np.arange(0,1.01,.2))
-        ax1.xaxis.set_minor_locator(AutoMinorLocator(2))
-        ax1.xaxis.grid(True, which='minor')
-        ax1.set_xticks(np.arange(0,1.01,.2))
-        ax0.xaxis.set_minor_locator(AutoMinorLocator(2))
-        ax0.xaxis.grid(True, which='minor')
-        ax0.set_ylim(len(metrics), -1)
-        ax0.set_yticks(range(len(metrics)))
-        ax0.set_yticklabels(metrics.keys())
-        plt.show()
+    #     ax0.set_xticks(np.arange(0,1.01,.2))
+    #     ax1.xaxis.set_minor_locator(AutoMinorLocator(2))
+    #     ax1.xaxis.grid(True, which='minor')
+    #     ax1.set_xticks(np.arange(0,1.01,.2))
+    #     ax0.xaxis.set_minor_locator(AutoMinorLocator(2))
+    #     ax0.xaxis.grid(True, which='minor')
+    #     ax0.set_ylim(len(metrics), -1)
+    #     ax0.set_yticks(range(len(metrics)))
+    #     ax0.set_yticklabels(metrics.keys())
+    #     plt.show()
 
-    def first_positives(self, fig_path=""):
-        db = self.dataset_test_first_diag
-        pos_mask = db.labels == 1
-        pred = np.stack(
-            [db.predictions_per_age[age][pos_mask] for age in range(20, 80, 5)], axis=0
-        )
-        age_above_50 = db.df.AGE.values[pos_mask] >= 50
-        age_below_50 = db.df.AGE.values[pos_mask] < 50
+    # def first_positives(self, fig_path=""):
+    #     db = self.dataset_test_first_diag
+    #     pos_mask = db.labels == 1
+    #     pred = np.stack(
+    #         [db.predictions_per_age[age][pos_mask] for age in range(20, 80, 5)], axis=0
+    #     )
+    #     age_above_50 = db.df.AGE.values[pos_mask] >= 50
+    #     age_below_50 = db.df.AGE.values[pos_mask] < 50
 
-        neg = self.negatives_older60
-        pred_below_50 = [np.array(x) for x in pred[:, age_below_50]]
-        pred_below_50 = [x for x in pred[:, age_below_50]]
-        pred_above_50 = [np.array(x) for x in pred[:, age_above_50]]
-        # print(pred_below_50)
-        # x = [i for i in neg[1]]
-        # print(x)
+    #     neg = self.negatives_older60
+    #     pred_below_50 = [np.array(x) for x in pred[:, age_below_50]]
+    #     pred_below_50 = [x for x in pred[:, age_below_50]]
+    #     pred_above_50 = [np.array(x) for x in pred[:, age_above_50]]
+    #     # print(pred_below_50)
+    #     # x = [i for i in neg[1]]
+    #     # print(x)
 
-        color_boxplot = sns.color_palette("cool", n_colors=20)
+    #     color_boxplot = sns.color_palette("cool", n_colors=20)
 
-        plt.figure(figsize=(15, 5), dpi=300)
-        plt.subplot(131)
-        bp0 = plt.boxplot(
-            pred_below_50,
-            showfliers=False,
-            patch_artist=True,
-            labels=[i for i in neg[1]],
-            medianprops=dict(linewidth=2.5, color="black"),
-        )
-        colors = [color_boxplot[int(np.median(a) * 20)] for a in pred_below_50]
-        for box, color in zip(bp0["boxes"], colors):
-            box.set(facecolor=color)
-            # box.set(color='blue', linewidth=5)
-            # box.set_facecolor('red')
-        # sns.boxplot(x=[i for i in neg[1]], y=pred_below_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_below_50])
-        # sns.boxplot(x=np.array([i for i in neg[1]]), y=np.array(pred_below_50))
-        # sns.boxplot(y=pred_below_50[0])
-        # sns.catplot(x=[0,1], y=pred_below_50[0:2], kind='box')
-        # plt.boxplot(pred_below_50)
+    #     plt.figure(figsize=(15, 5), dpi=300)
+    #     plt.subplot(131)
+    #     bp0 = plt.boxplot(
+    #         pred_below_50,
+    #         showfliers=False,
+    #         patch_artist=True,
+    #         labels=[i for i in neg[1]],
+    #         medianprops=dict(linewidth=2.5, color="black"),
+    #     )
+    #     colors = [color_boxplot[int(np.median(a) * 20)] for a in pred_below_50]
+    #     for box, color in zip(bp0["boxes"], colors):
+    #         box.set(facecolor=color)
+    #         # box.set(color='blue', linewidth=5)
+    #         # box.set_facecolor('red')
+    #     # sns.boxplot(x=[i for i in neg[1]], y=pred_below_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_below_50])
+    #     # sns.boxplot(x=np.array([i for i in neg[1]]), y=np.array(pred_below_50))
+    #     # sns.boxplot(y=pred_below_50[0])
+    #     # sns.catplot(x=[0,1], y=pred_below_50[0:2], kind='box')
+    #     # plt.boxplot(pred_below_50)
 
-        plt.xlabel("positives\n(age < 50 )")
-        plt.ylim(0, 1)
-        plt.subplot(132)
-        bp1 = plt.boxplot(
-            pred_above_50,
-            showfliers=False,
-            patch_artist=True,
-            labels=[i for i in neg[1]],
-            medianprops=dict(linewidth=2.5, color="black"),
-        )
-        colors = [color_boxplot[int(np.median(a) * 20)] for a in pred_above_50]
-        for box, color in zip(bp1["boxes"], colors):
-            box.set(facecolor=color)
-        # sns.boxplot(x=[i for i in neg[1]], y=pred_above_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_above_50])
-        plt.xlabel("positives\n(age >= 50 )")
-        plt.ylim(0, 1)
-        plt.subplot(133)
-        bp2 = plt.boxplot(
-            neg[0],
-            showfliers=False,
-            patch_artist=True,
-            labels=[i for i in neg[1]],
-            medianprops=dict(linewidth=2.5, color="black"),
-        )
-        colors = [color_boxplot[int(np.median(a) * 20)] for a in neg[0]]
-        for box, color in zip(bp2["boxes"], colors):
-            box.set(facecolor=color)
-            box.set(edgecolor="black")
-        # sns.boxplot(x=[i for i in neg[1]], y=neg[0], showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in neg[0]])
-        plt.xlabel("negatives\n(age >= 60)")
-        plt.ylim(0, 1)
-        plt.tight_layout(pad=1)
+    #     plt.xlabel("positives\n(age < 50 )")
+    #     plt.ylim(0, 1)
+    #     plt.subplot(132)
+    #     bp1 = plt.boxplot(
+    #         pred_above_50,
+    #         showfliers=False,
+    #         patch_artist=True,
+    #         labels=[i for i in neg[1]],
+    #         medianprops=dict(linewidth=2.5, color="black"),
+    #     )
+    #     colors = [color_boxplot[int(np.median(a) * 20)] for a in pred_above_50]
+    #     for box, color in zip(bp1["boxes"], colors):
+    #         box.set(facecolor=color)
+    #     # sns.boxplot(x=[i for i in neg[1]], y=pred_above_50, showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in pred_above_50])
+    #     plt.xlabel("positives\n(age >= 50 )")
+    #     plt.ylim(0, 1)
+    #     plt.subplot(133)
+    #     bp2 = plt.boxplot(
+    #         neg[0],
+    #         showfliers=False,
+    #         patch_artist=True,
+    #         labels=[i for i in neg[1]],
+    #         medianprops=dict(linewidth=2.5, color="black"),
+    #     )
+    #     colors = [color_boxplot[int(np.median(a) * 20)] for a in neg[0]]
+    #     for box, color in zip(bp2["boxes"], colors):
+    #         box.set(facecolor=color)
+    #         box.set(edgecolor="black")
+    #     # sns.boxplot(x=[i for i in neg[1]], y=neg[0], showfliers=False, palette=[color_boxplot[int(np.median(a)*20)] for a in neg[0]])
+    #     plt.xlabel("negatives\n(age >= 60)")
+    #     plt.ylim(0, 1)
+    #     plt.tight_layout(pad=1)
 
-        if fig_path != "":
-            plt.savefig(fig_path)
+    #     if fig_path != "":
+    #         plt.savefig(fig_path)
 
-        plt.show()
+    #     plt.show()
 
     # def first_positives_violin(self, fig_path=""):
     #     db = self.dataset_test_first_diag
