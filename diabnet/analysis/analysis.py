@@ -879,8 +879,54 @@ def plot_core_family(r):
         # )
         plt.ylim(0, 1)
         plt.xticks(range(12), np.arange(20, 80, 5))
+    plt.tight_layout(pad=1)
 
+def plot_family(r):
+        db = r.dataset_test_unique
+        df_pedigree = pd.read_csv("../data/datasets/pedigree.csv")
+        df_pedigree = df_pedigree.set_index("id")
 
+        ids = db.df[["id", "AGE", "sex", "mo", "fa", "mo_t2d", "fa_t2d", "T2D"]]
+        ids = ids.join(df_pedigree[["famid"]], how="left", on="id")
+
+        color_by_family = ids["famid"].values
+        famid_sorted = np.unique(np.sort(color_by_family))
+        fam_masks = [color_by_family == i for i in famid_sorted]
+        patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
+
+        plt.figure(figsize=(16, 32), dpi=150)
+        for i in range(len(fam_masks)):
+            ax1 = plt.subplot(8, 4, i + 1)
+            p = np.stack(
+                [db.predictions_per_age[age][fam_masks[i]] for age in range(20, 80, 5)],
+                axis=0,
+            )
+            m_p = db.labels[fam_masks[i]] == 1
+            m_n = db.labels[fam_masks[i]] == 0
+
+            pa = patient_ages[fam_masks[i]]
+            pp = db.predictions[fam_masks[i]]
+
+            if True in m_n:
+                plt.plot(p[:, m_n], color="grey")
+            if True in m_p:
+                plt.plot(p[:, m_p], color="red")
+            # print patient age
+            plt.scatter((pa[m_p] - 20) / 5, pp[m_p], c="black", marker="^")
+            plt.scatter((pa[m_n] - 20) / 5, pp[m_n], c="blue", marker="+")
+
+            plt.title("famid {}".format(famid_sorted[i]))
+            plt.xticks(range(12), np.arange(20, 80, 5))
+            plt.ylim(0, 1)
+
+        plt.tight_layout(pad=1)
+            # break
+
+        # if fig_path != "":
+        #     plt.tight_layout(pad=1)
+        #     plt.savefig(fig_path)
+
+        # plt.show()
 
 # --------------------------------------------------------------------------- #
 # -------------- Notebook 4: Family Cross Validation analysis --------------- #

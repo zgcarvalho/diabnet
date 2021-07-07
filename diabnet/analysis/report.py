@@ -847,125 +847,125 @@ class DiabNetReport:
     #     plt.show()
 
     # family test
-    def family_plots(self, fig_path=""):
-        db = self.dataset_test_unique
-        df_pedigree = pd.read_csv("../data/datasets/pedigree.csv")
-        df_pedigree = df_pedigree.set_index("id")
+    # def family_plots(self, fig_path=""):
+    #     db = self.dataset_test_unique
+    #     df_pedigree = pd.read_csv("../data/datasets/pedigree.csv")
+    #     df_pedigree = df_pedigree.set_index("id")
 
-        ids = db.df[["id", "AGE", "sex", "mo", "fa", "mo_t2d", "fa_t2d", "T2D"]]
-        ids = ids.join(df_pedigree[["famid"]], how="left", on="id")
+    #     ids = db.df[["id", "AGE", "sex", "mo", "fa", "mo_t2d", "fa_t2d", "T2D"]]
+    #     ids = ids.join(df_pedigree[["famid"]], how="left", on="id")
 
-        color_by_family = ids["famid"].values
-        famid_sorted = np.unique(np.sort(color_by_family))
-        fam_masks = [color_by_family == i for i in famid_sorted]
-        patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
+    #     color_by_family = ids["famid"].values
+    #     famid_sorted = np.unique(np.sort(color_by_family))
+    #     fam_masks = [color_by_family == i for i in famid_sorted]
+    #     patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
 
-        plt.figure(figsize=(16, 32), dpi=150)
-        for i in range(len(fam_masks)):
-            ax1 = plt.subplot(8, 4, i + 1)
-            p = np.stack(
-                [db.predictions_per_age[age][fam_masks[i]] for age in range(20, 80, 5)],
-                axis=0,
-            )
-            m_p = db.labels[fam_masks[i]] == 1
-            m_n = db.labels[fam_masks[i]] == 0
+    #     plt.figure(figsize=(16, 32), dpi=150)
+    #     for i in range(len(fam_masks)):
+    #         ax1 = plt.subplot(8, 4, i + 1)
+    #         p = np.stack(
+    #             [db.predictions_per_age[age][fam_masks[i]] for age in range(20, 80, 5)],
+    #             axis=0,
+    #         )
+    #         m_p = db.labels[fam_masks[i]] == 1
+    #         m_n = db.labels[fam_masks[i]] == 0
 
-            pa = patient_ages[fam_masks[i]]
-            pp = db.predictions[fam_masks[i]]
+    #         pa = patient_ages[fam_masks[i]]
+    #         pp = db.predictions[fam_masks[i]]
 
-            if True in m_n:
-                plt.plot(p[:, m_n], color="grey")
-            if True in m_p:
-                plt.plot(p[:, m_p], color="red")
-            # print patient age
-            plt.scatter((pa[m_p] - 20) / 5, pp[m_p], c="black", marker="^")
-            plt.scatter((pa[m_n] - 20) / 5, pp[m_n], c="blue", marker="+")
+    #         if True in m_n:
+    #             plt.plot(p[:, m_n], color="grey")
+    #         if True in m_p:
+    #             plt.plot(p[:, m_p], color="red")
+    #         # print patient age
+    #         plt.scatter((pa[m_p] - 20) / 5, pp[m_p], c="black", marker="^")
+    #         plt.scatter((pa[m_n] - 20) / 5, pp[m_n], c="blue", marker="+")
 
-            plt.title("famid {}".format(famid_sorted[i]))
-            plt.xticks(range(12), np.arange(20, 80, 5))
-            plt.ylim(0, 1)
-            # break
+    #         plt.title("famid {}".format(famid_sorted[i]))
+    #         plt.xticks(range(12), np.arange(20, 80, 5))
+    #         plt.ylim(0, 1)
+    #         # break
 
-        if fig_path != "":
-            plt.tight_layout(pad=1)
-            plt.savefig(fig_path)
+    #     if fig_path != "":
+    #         plt.tight_layout(pad=1)
+    #         plt.savefig(fig_path)
 
-        plt.show()
+    #     plt.show()
 
-    def parents_plots(self, fig_path=""):
-        db = self.dataset_test_unique
-        df = db.df.set_index("id")
-        # print(df)
-        df_fathers = df[df.index.isin(df.fa)]
-        df_mothers = df[df.index.isin(df.mo)]
-        df_children = df[
-            (df.fa.isin(df_fathers.index)) & (df.mo.isin(df_mothers.index))
-        ]
-        # print(df_children)
-        parents = df_children[["fa", "mo"]].groupby(["fa", "mo"]).count().index
-        predictions = np.stack(
-            [db.predictions_per_age[age] for age in range(20, 80, 5)], axis=1
-        )
-        patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
-        # print(patient_ages)
+    # def parents_plots(self, fig_path=""):
+    #     db = self.dataset_test_unique
+    #     df = db.df.set_index("id")
+    #     # print(df)
+    #     df_fathers = df[df.index.isin(df.fa)]
+    #     df_mothers = df[df.index.isin(df.mo)]
+    #     df_children = df[
+    #         (df.fa.isin(df_fathers.index)) & (df.mo.isin(df_mothers.index))
+    #     ]
+    #     # print(df_children)
+    #     parents = df_children[["fa", "mo"]].groupby(["fa", "mo"]).count().index
+    #     predictions = np.stack(
+    #         [db.predictions_per_age[age] for age in range(20, 80, 5)], axis=1
+    #     )
+    #     patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
+    #     # print(patient_ages)
 
-        plt.figure(figsize=(16, 36), dpi=150)
-        for i in range(len(parents)):
-            ax1 = plt.subplot(9, 4, i + 1)
-            plt.title("father {} mother {}".format(parents[i][0], parents[i][1]))
-            father_mask = (db.df["id"] == parents[i][0]).values
-            mother_mask = (db.df["id"] == parents[i][1]).values
-            pos_mask = db.labels == 1
-            neg_mask = db.labels == 0
-            children_mask = np.logical_and(
-                (db.df["fa"] == parents[i][0]).values,
-                (db.df["mo"] == parents[i][1]).values,
-            )
+    #     plt.figure(figsize=(16, 36), dpi=150)
+    #     for i in range(len(parents)):
+    #         ax1 = plt.subplot(9, 4, i + 1)
+    #         plt.title("father {} mother {}".format(parents[i][0], parents[i][1]))
+    #         father_mask = (db.df["id"] == parents[i][0]).values
+    #         mother_mask = (db.df["id"] == parents[i][1]).values
+    #         pos_mask = db.labels == 1
+    #         neg_mask = db.labels == 0
+    #         children_mask = np.logical_and(
+    #             (db.df["fa"] == parents[i][0]).values,
+    #             (db.df["mo"] == parents[i][1]).values,
+    #         )
 
-            m_pos_fa = np.logical_and(pos_mask, father_mask)
-            m_pos_mo = np.logical_and(pos_mask, mother_mask)
-            m_pos_chi = np.logical_and(pos_mask, children_mask)
-            m_neg_fa = np.logical_and(neg_mask, father_mask)
-            m_neg_mo = np.logical_and(neg_mask, mother_mask)
-            m_neg_chi = np.logical_and(neg_mask, children_mask)
+    #         m_pos_fa = np.logical_and(pos_mask, father_mask)
+    #         m_pos_mo = np.logical_and(pos_mask, mother_mask)
+    #         m_pos_chi = np.logical_and(pos_mask, children_mask)
+    #         m_neg_fa = np.logical_and(neg_mask, father_mask)
+    #         m_neg_mo = np.logical_and(neg_mask, mother_mask)
+    #         m_neg_chi = np.logical_and(neg_mask, children_mask)
 
-            if True in m_pos_fa:
-                plt.plot(np.transpose(predictions[m_pos_fa, :]), color="blue")
-            if True in m_pos_mo:
-                plt.plot(np.transpose(predictions[m_pos_mo, :]), color="red")
-            if True in m_pos_chi:
-                plt.plot(np.transpose(predictions[m_pos_chi, :]), color="green")
-            if True in m_neg_fa:
-                plt.plot(np.transpose(predictions[m_neg_fa, :]), color="blue", ls="--")
-            if True in m_neg_mo:
-                plt.plot(np.transpose(predictions[m_neg_mo, :]), color="red", ls="--")
-            if True in m_neg_chi:
-                plt.plot(
-                    np.transpose(predictions[m_neg_chi, :]), color="green", ls="--"
-                )
-            plt.scatter(
-                (patient_ages[father_mask] - 20) / 5,
-                db.predictions[father_mask],
-                c="blue",
-            )
-            plt.scatter(
-                (patient_ages[mother_mask] - 20) / 5,
-                db.predictions[mother_mask],
-                c="red",
-            )
-            plt.scatter(
-                (patient_ages[children_mask] - 20) / 5,
-                db.predictions[children_mask],
-                c="green",
-            )
-            plt.ylim(0, 1)
-            plt.xticks(range(12), np.arange(20, 80, 5))
+    #         if True in m_pos_fa:
+    #             plt.plot(np.transpose(predictions[m_pos_fa, :]), color="blue")
+    #         if True in m_pos_mo:
+    #             plt.plot(np.transpose(predictions[m_pos_mo, :]), color="red")
+    #         if True in m_pos_chi:
+    #             plt.plot(np.transpose(predictions[m_pos_chi, :]), color="green")
+    #         if True in m_neg_fa:
+    #             plt.plot(np.transpose(predictions[m_neg_fa, :]), color="blue", ls="--")
+    #         if True in m_neg_mo:
+    #             plt.plot(np.transpose(predictions[m_neg_mo, :]), color="red", ls="--")
+    #         if True in m_neg_chi:
+    #             plt.plot(
+    #                 np.transpose(predictions[m_neg_chi, :]), color="green", ls="--"
+    #             )
+    #         plt.scatter(
+    #             (patient_ages[father_mask] - 20) / 5,
+    #             db.predictions[father_mask],
+    #             c="blue",
+    #         )
+    #         plt.scatter(
+    #             (patient_ages[mother_mask] - 20) / 5,
+    #             db.predictions[mother_mask],
+    #             c="red",
+    #         )
+    #         plt.scatter(
+    #             (patient_ages[children_mask] - 20) / 5,
+    #             db.predictions[children_mask],
+    #             c="green",
+    #         )
+    #         plt.ylim(0, 1)
+    #         plt.xticks(range(12), np.arange(20, 80, 5))
 
-        if fig_path != "":
-            plt.tight_layout(pad=1)
-            plt.savefig(fig_path)
+    #     if fig_path != "":
+    #         plt.tight_layout(pad=1)
+    #         plt.savefig(fig_path)
 
-        plt.show()
+    #     plt.show()
 
     # def first_positives(self):
     #     db = self.dataset_test_first_diag
