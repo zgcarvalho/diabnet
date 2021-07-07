@@ -797,24 +797,7 @@ def plot_core_family(r):
         [db.predictions_per_age[age] for age in range(20, 80, 5)], axis=1
     )
     patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
-
-def parents_plots(self, fig_path=""):
-    db = self.dataset_test_unique
-    df = db.df.set_index("id")
-    # print(df)
-    df_fathers = df[df.index.isin(df.fa)]
-    df_mothers = df[df.index.isin(df.mo)]
-    df_children = df[
-        (df.fa.isin(df_fathers.index)) & (df.mo.isin(df_mothers.index))
-    ]
-    # print(df_children)
-    parents = df_children[["fa", "mo"]].groupby(["fa", "mo"]).count().index
-    predictions = np.stack(
-        [db.predictions_per_age[age] for age in range(20, 80, 5)], axis=1
-    )
-    patient_ages = np.array(db.features[:, db._feat_names.index("AGE")])
-    # print(patient_ages)
-
+    
     plt.figure(figsize=(16, 36), dpi=150)
     for i in range(len(parents)):
         ax1 = plt.subplot(9, 4, i + 1)
@@ -836,51 +819,67 @@ def parents_plots(self, fig_path=""):
         m_neg_chi = np.logical_and(neg_mask, children_mask)
 
         if True in m_pos_fa:
-            plt.plot(np.transpose(predictions[m_pos_fa, :]), color="blue")
+            plt.plot(np.transpose(predictions[m_pos_fa, :]), color=COLORS[9])
+            plt.scatter(
+                (patient_ages[father_mask] - 20) / 5,
+                db.predictions[father_mask],
+                color=COLORS[9],
+            )
         if True in m_pos_mo:
-            plt.plot(np.transpose(predictions[m_pos_mo, :]), color="red")
+            plt.plot(np.transpose(predictions[m_pos_mo, :]), color=COLORS[6])
+            plt.scatter(
+                (patient_ages[mother_mask] - 20) / 5,
+                db.predictions[mother_mask],
+                color=COLORS[6],
+            )
         if True in m_pos_chi:
-            plt.plot(np.transpose(predictions[m_pos_chi, :]), color="green")
+            plt.plot(np.transpose(predictions[m_pos_chi, :]), color=COLORS[7])
+            plt.scatter(
+                (patient_ages[children_mask] - 20) / 5,
+                db.predictions[children_mask],
+                color=COLORS[7],
+            )
         if True in m_neg_fa:
-            plt.plot(np.transpose(predictions[m_neg_fa, :]), color="blue", ls="--")
+            plt.plot(np.transpose(predictions[m_neg_fa, :]), color=COLORS[9], ls="--")
+            plt.scatter(
+                (patient_ages[father_mask] - 20) / 5,
+                db.predictions[father_mask],
+                color=COLORS[9],
+            )
         if True in m_neg_mo:
-            plt.plot(np.transpose(predictions[m_neg_mo, :]), color="red", ls="--")
+            plt.plot(np.transpose(predictions[m_neg_mo, :]), color=COLORS[6], ls="--")
+            plt.scatter(
+                (patient_ages[mother_mask] - 20) / 5,
+                db.predictions[mother_mask],
+                color=COLORS[6],
+            )
         if True in m_neg_chi:
             plt.plot(
-                np.transpose(predictions[m_neg_chi, :]), color="green", ls="--"
+                np.transpose(predictions[m_neg_chi, :]), color=COLORS[7], ls="--"
             )
-        plt.scatter(
-            (patient_ages[father_mask] - 20) / 5,
-            db.predictions[father_mask],
-            c="blue",
-        )
-        plt.scatter(
-            (patient_ages[mother_mask] - 20) / 5,
-            db.predictions[mother_mask],
-            c="red",
-        )
-        plt.scatter(
-            (patient_ages[children_mask] - 20) / 5,
-            db.predictions[children_mask],
-            c="green",
-        )
+            plt.scatter(
+                (patient_ages[children_mask] - 20) / 5,
+                db.predictions[children_mask],
+                color=COLORS[7],
+            )
+        # plt.scatter(
+        #     (patient_ages[father_mask] - 20) / 5,
+        #     db.predictions[father_mask],
+        #     c=COLORS[9],
+        # )
+        # plt.scatter(
+        #     (patient_ages[mother_mask] - 20) / 5,
+        #     db.predictions[mother_mask],
+        #     c=COLORS[6],
+        # )
+        # plt.scatter(
+        #     (patient_ages[children_mask] - 20) / 5,
+        #     db.predictions[children_mask],
+        #     c=COLORS[7],
+        # )
         plt.ylim(0, 1)
         plt.xticks(range(12), np.arange(20, 80, 5))
 
-    if fig_path != "":
-        plt.tight_layout(pad=1)
-        plt.savefig(fig_path)
-
-    plt.show()
-    # _precision_recall_b_comp(
-    #     r.dataset_test_unique,
-    #     r.dataset_test_unique_subset_neg_older50,
-    #     ax1,
-    #     num=1000,
-    #     alpha=0.05,
-    #     interval=interval,
-    # )
-    # # return fig
 
 
 # --------------------------------------------------------------------------- #
