@@ -496,7 +496,19 @@ class DiabNetReport:
         return self._mce(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
 
     ##########
+
+
+
     def auc_per_age(self):
+        db = self.dataset_test_unique
+        aucs = {
+            age: roc_auc_score(db.labels, preds)
+            for age, preds in db.predictions_per_age.items()
+        }
+        for k, v in aucs.items():
+            print("Predictions using patient age = {} have AUC = {:.3f}".format(k, v))
+
+    def avgprec_per_age(self):
         db = self.dataset_test_unique
         aucs = {
             age: roc_auc_score(db.labels, preds)
