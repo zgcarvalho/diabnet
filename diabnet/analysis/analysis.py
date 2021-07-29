@@ -426,6 +426,31 @@ def _roc_b_comp(
     ax.set_xlabel("False Positive Rate")
     ax.set_ylabel("True Positive Rate")
 
+def _roc_by_ages(db, ax):
+    colors = sns.color_palette("BrBG_r", n_colors=12)
+    for age, preds in db.predictions_per_age.items():
+        fpr, tpr, _ = roc_curve(db.labels, preds)
+        score = roc_auc_score(db.labels, preds)
+        ax.plot(fpr, tpr, color=colors[int((age-20)/5)],label=f"{age} : {score:.3f}")
+        
+
+    ax.legend(
+        title='Age : AUC',
+        loc="lower right",
+        prop={'size': 8},
+    )
+    ax.plot([0, 1], [0, 1], color=COLORS[7], linewidth=0.5)
+    ax.set_ylim(0, 1)
+    ax.set_xlim(0, 1)
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+
+def plot_roc_by_age(r):
+    fig = plt.figure(figsize=(6, 6), dpi=300)
+    ax1 = fig.add_subplot(111)
+    _roc_by_ages(r.dataset_test_unique, ax1)
+    # return fig
+
 def plot_roc(r, interval="HDI"):
     fig = plt.figure(figsize=(6, 6), dpi=300)
     ax1 = fig.add_subplot(111)
@@ -609,6 +634,37 @@ def _precision_recall_b_comp(
     ax.set_xlim(0, 1)
     ax.set_xlabel("False Positive Rate")
     ax.set_ylabel("True Positive Rate")
+
+def _precision_recall_by_ages(db, ax):
+    colors = sns.color_palette("BrBG_r", n_colors=12)
+    for age, preds in db.predictions_per_age.items():
+        precision, recall, _ = precision_recall_curve(db.labels, preds)
+        score = average_precision_score(db.labels, preds)
+        ax.step(
+            recall,
+            precision,
+            where="post",
+            color=colors[int((age-20)/5)],
+            # alpha=0.5,
+            # linewidth=0.2,
+            label=f"{age} : {score:.3f}"
+        )
+
+    ax.legend(
+        title='Age : AP',
+        loc="lower left",
+        prop={'size': 8},
+    )
+    ax.set_ylim(0, 1)
+    ax.set_xlim(0, 1)
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+
+def plot_precision_recall_by_age(r):
+    fig = plt.figure(figsize=(6, 6), dpi=300)
+    ax1 = fig.add_subplot(111)
+    _precision_recall_by_ages(r.dataset_test_unique, ax1)
+    # return fig
 
 def plot_precision_recall(r, interval="HDI"):
     fig = plt.figure(figsize=(6, 6), dpi=300)
@@ -1091,3 +1147,190 @@ def barplot(
     # Draw legend if we need
     if legend:
         ax.legend(bars, data.keys())
+
+
+# --------------------------------------------------------------------------- #
+# ------------- Notebook 5: Examples of predictions to individuals ---------- #
+
+def _plot_examples(dataset, samples):
+    fig = plt.figure(figsize=(16,16), dpi=300)
+    outer_grid = fig.add_gridspec(4, 4, wspace=0.22, hspace=0.32)
+    color_h = sns.color_palette("Spectral_r", n_colors=100)
+    for i in range(len(samples)):
+        id = samples[i]
+        label = dataset.df["T2D"].iloc[id]
+        age = dataset.df["AGE"].iloc[id]
+        title = f"patient - id: {dataset.df['id'].iloc[id]}\n(age: {age}, diagnostic: {'P' if label==1 else 'N'})"
+
+        ages = dataset._age_range
+        
+        inner_grid = outer_grid[int(i/4), int(i%4)].subgridspec(1, len(ages), wspace=0.07, hspace=0)
+
+        i = 0
+
+        ax_objs = []
+        for i, age in enumerate(ages):
+
+            x = dataset.predictions_per_age_ensemble[age][id]
+            x_d = np.linspace(0,1, 1000)
+
+            kde = KernelDensity(bandwidth=0.03, kernel='gaussian')
+            kde.fit(x[:, None])
+
+            logprob = kde.score_samples(x_d[:, None])
+
+            # creating new axes object
+            ax_objs.append(fig.add_subplot(inner_grid[0:, i:i+1], zorder=len(ages)-2*i))
+
+            # plotting the distribution
+            ax_objs[-1].plot(np.exp(logprob), x_d, color='k',lw=1)
+            ax_objs[-1].hlines(x, 1, 17, colors=[color_h[int(intensity*99)] for intensity in x], alpha=0.1, linewidth=5)
+            ax_objs[-1].plot(9, np.mean(x), color='k', markersize=5, marker='o')
+
+            # setting uniform x and y lims
+            ax_objs[-1].set_xlim(1,17)
+            ax_objs[-1].set_ylim(-0.02,1.02)
+
+            # make background transparent
+            rect = ax_objs[-1].patch
+            rect.set_alpha(0)
+
+            # remove borders, axis ticks, and labels
+            ax_objs[-1].set_xticklabels([])
+            ax_objs[-1].set_xticks([10])
+
+            if i == 0:
+                ax_objs[-1].set_ylabel("probability", fontsize=10,fontweight="normal")
+                ax_objs[-1].text(110,-0.15,'age',fontsize=10,ha="center")
+                ax_objs[-1].text(110,1.05,title,fontsize=10,ha="center",fontweight="bold")
+            else:
+                ax_objs[-1].set_yticklabels([])
+                ax_objs[-1].set_yticks([])
+
+            spines = ["right","left"]
+            for s in spines:
+                ax_objs[-1].spines[s].set_visible(False)
+
+            ax_objs[-1].text(10,-0.10,age,fontsize=8,ha="center")
+
+
+def plot_elderly_and_positives(r):
+    df = r.dataset_test_first_diag.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==1)&(df.AGE>60)].index, N, replace=False)
+    _plot_examples(r.dataset_test_first_diag, samples)
+
+
+def plot_elderly_and_negatives(r):
+    df = r.dataset_test_unique.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==0)&(df.AGE>60)].index, N, replace=False)
+    _plot_examples(r.dataset_test_unique, samples)
+
+def plot_young_and_positives(r):
+    df = r.dataset_test_first_diag.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==1)&(df.AGE<40)].index, N, replace=False)
+    _plot_examples(r.dataset_test_first_diag, samples)
+    
+
+def plot_young_and_negatives(r):
+    df = r.dataset_test_unique.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==0)&(df.AGE<40)].index, N, replace=False)
+    _plot_examples(r.dataset_test_unique, samples)
+
+# --------------------------------------------------------------------------- #
+# ------------- Notebook 8: Relative score ---------- #
+
+def _distributions(r, age):
+    import numpy as np
+    assert((age >= 20) and (age < 75)) 
+    mask_pos = (r.dataset_test_unique.df.T2D == 1)
+    mask_neg = ((r.dataset_test_unique.df.T2D == 0) & (r.dataset_test_unique.df.AGE > age))
+    if age % 5 != 0:
+        age += 5 - (age % 5)
+    neg_dist = r.dataset_test_unique.predictions_per_age_ensemble[age][mask_neg].flatten()
+    pos_dist = r.dataset_test_unique.predictions_per_age_ensemble[age][mask_pos].flatten()
+    # print(np.max(neg_dist))
+    return neg_dist, pos_dist
+
+def _relative_score(value, neg, pos):
+    neg_score = np.sum(value < neg)/len(neg)
+    pos_score = np.sum(value > pos)/len(pos)
+    return (neg_score, pos_score)
+
+def _plot_relative_score(fig, value, neg_dist, pos_dist, title):
+    COLORS = sns.color_palette("colorblind")
+    ax0, ax1 = fig.subplots(1,2, gridspec_kw={'width_ratios': [1, 9]})
+    neg_score, pos_score = _relative_score(value, neg_dist, pos_dist)
+    ax0.bar(0.5, -neg_score, color=COLORS[7])
+    ax0.bar(0.5, pos_score, color=COLORS[3])
+    ax0.set_ylim(-1,1)
+    ax0.set_xticks([])
+
+    bins_a = int(1 + value * 18) 
+    bins_b = 20 - bins_a
+    # print(bins_a, bins_b)
+
+    ax1.set_title(title)
+    ax1.hist(neg_dist[neg_dist<value], bins=bins_a, alpha=0.1, color=COLORS[7])
+    ax1.hist(pos_dist[pos_dist<value], bins=bins_a, alpha=0.5, color=COLORS[3])
+    ax1.hist(neg_dist[neg_dist>value], bins=bins_b, alpha=0.5, color=COLORS[7])
+    ax1.hist(pos_dist[pos_dist>value], bins=bins_b, alpha=0.1, color=COLORS[3])
+
+
+    ax1.axvline(x=value, color='r', lw=3)   
+    ax1.set_yscale('log')
+    ax1.set_yticks([])
+    ax1.set_xlim(-0.01, 1.01)
+
+def _plot_scores(dataset, samples, report, pred_age = -1):
+    fig = plt.figure(figsize=(16,16), dpi=300)
+
+    subfigs = fig.subfigures(4, 4)
+
+    for i in range(len(samples)):
+        id = samples[i]
+        label = dataset.df["T2D"].iloc[id]
+        age = dataset.df["AGE"].iloc[id]
+
+        title = f"patient - id: {dataset.df['id'].iloc[id]}\n(age: {age}, diagnostic: {'P' if label==1 else 'N'})"
+        # subfigs.flat[i].suptitle(title, y=1.0)
+
+        if pred_age == -1:
+            neg_dist, pos_dist = _distributions(report, age)
+            _plot_relative_score(subfigs.flat[i], dataset.predictions[i], neg_dist, pos_dist, title)
+        else:
+            neg_dist, pos_dist = _distributions(report, pred_age)
+            _plot_relative_score(subfigs.flat[i], dataset.predictions_per_age[pred_age][i], neg_dist, pos_dist, title)
+
+
+
+def plot_relative_score_elderly_and_positives(r, pred_age=-1):
+    df = r.dataset_test_first_diag.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==1)&(df.AGE>=60)&(df.AGE<75)].index, N, replace=False)
+    _plot_scores(r.dataset_test_first_diag, samples, r, pred_age)
+    # return df[df.index.isin(samples)]
+
+def plot_relative_score_elderly_and_negatives(r, pred_age=-1):
+    df = r.dataset_test_unique.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==0)&(df.AGE>=60)&(df.AGE<75)].index, N, replace=False)
+    _plot_scores(r.dataset_test_unique, samples, r, pred_age)
+    # return df[df.index.isin(samples)]
+
+def plot_relative_score_young_and_positives(r, pred_age=-1):
+    df = r.dataset_test_first_diag.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==1)&(df.AGE<40)].index, N, replace=False)
+    _plot_scores(r.dataset_test_first_diag, samples, r, pred_age)
+    # return df[df.index.isin(samples)]
+
+def plot_relative_score_young_and_negatives(r, pred_age=-1):
+    df = r.dataset_test_unique.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==0)&(df.AGE<40)].index, N, replace=False)
+    _plot_scores(r.dataset_test_unique, samples, r, pred_age)
+    # return df[df.index.isin(samples)]
