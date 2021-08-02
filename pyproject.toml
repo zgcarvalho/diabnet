@@ -20,7 +20,7 @@ astropy = "^4.2"
 captum = "^0.3.1"
 uncertainty-calibration = "^0.0.9"
 flake8 = "^3.9.2"
-tqdm = "^4.61.1"
+tqdm = "^4.62.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
