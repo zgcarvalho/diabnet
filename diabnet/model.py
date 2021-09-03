@@ -76,12 +76,15 @@ class LocallyConnected(nn.Module):
             raise ValueError(
                 "`activation` must be `tanh`, `sigmoid`, `gelu` or `identity`."
             )
+        # TEST layernorm
+        self.norm = nn.LayerNorm(output_size)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = (x.unsqueeze(1) * self.weight).sum(2)
         if self.bias is not None:
             out += self.bias
         out = out.squeeze(1)
+        out = self.norm(out)
         out = self.act(out)
         return out
 
@@ -199,11 +202,11 @@ class Model(nn.Module):
             else:
                 ages = torch.minimum(
                     torch.maximum(ages, torch.tensor([0.4]).to(y.device)),
-                    torch.tensor([1.6]).to(y.device),
+                    torch.tensor([1.4]).to(y.device),
                 )
                 base = torch.maximum(
                     self.soft_label_baseline
-                    + self.soft_label_baseline_slope * (ages - 0.4) / (1.6 - 0.4),
+                    + self.soft_label_baseline_slope * (ages - 0.4) / (1.4 - 0.4),
                     torch.zeros(1).to(y.device),
                 )
                 top = torch.ones(1).to(y.device) * self.soft_label_topline

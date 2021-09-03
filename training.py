@@ -6,7 +6,7 @@ from torch.utils.data import random_split
 from diabnet.data import get_feature_names, DiabDataset
 from diabnet.train import train
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data/datasets")
 
 CATALOG = {
     "positive": os.path.join(

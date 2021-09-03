@@ -129,7 +129,7 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.ndarray
             # Encoding: divide to 50 to put AGE in the range ~[0,2]
             m[0, i] = feat_values[i] / 50
             # Works like a bias in a layer without bias
-            m[1, i] = 1
+            # m[1, i] = 1 #REMOVE
 
         # SEX
         elif feat_name == "sex":
@@ -147,13 +147,13 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.ndarray
             #  the two last positions
             # Encoding
             if feat_values[i] == 0:
-                m[0, i] = 1  # keep feat in the range [0,2]
+                m[0, i] = 2  # keep feat in the range [0,2]
             elif feat_values[i] == 1:
-                m[0, i + 1] = 1
+                m[0, i + 1] = 2
             else:
-                m[0, i + 2] = 1
+                m[0, i + 2] = 2
             # Works like a bias in a layer without bias
-            m[1, i], m[1, i + 1], m[1, i + 2] = 1, 1, 1
+            # m[1, i], m[1, i + 1], m[1, i + 2] = 1, 1, 1 #REMOVE
 
         # Father T2D diagnosis
         elif feat_name == "fa_t2d":
@@ -163,13 +163,13 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.ndarray
             #  the two last positions
             # Encoding
             if feat_values[i] == 0:
-                m[0, i + 2] = 1
+                m[0, i + 2] = 2
             elif feat_values[i] == 1:
-                m[0, i + 3] = 1
+                m[0, i + 3] = 2
             else:
-                m[0, i + 4] = 1
+                m[0, i + 4] = 2
             # Works like a bias in a layer without bias
-            m[1, i + 2], m[1, i + 3], m[1, i + 4] = 1, 1, 1
+            # m[1, i + 2], m[1, i + 3], m[1, i + 4] = 1, 1, 1 #REMOVE
 
         # SNPs
         elif feat_name[:3] == "snp":
@@ -404,9 +404,9 @@ class DiabDataset(Dataset):
             # Base adjusted considering age of the subject
             # NOTE: The younger the greater uncertainty about its negative
             #  label
-            ages = np.minimum(np.maximum(self._ages, 20.0), 80.0)
+            ages = np.minimum(np.maximum(self._ages, 20.0), 70.0)
             base_adjusted_by_age = np.maximum(
-                baseline + baseline_slope * (ages - 20.0) / (80.0 - 20.0), 0
+                baseline + baseline_slope * (ages - 20.0) / (70.0 - 20.0), 0
             )
             soft_labels = np.maximum(self._raw_labels * topline, base_adjusted_by_age)
 
