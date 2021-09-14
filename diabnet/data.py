@@ -6,6 +6,8 @@ from typing import List, Any, Tuple
 
 __all__ = ["DiabDataset", "get_feature_names", "encode_features"]
 
+AGE_DENOMINATOR = 50
+SOFT_LABEL_MIN_X_INTERCEPT = 120
 
 def get_feature_names(
     fn: str,
@@ -127,7 +129,7 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.ndarray
         # AGE
         if feat_name == "AGE":
             # Encoding: divide to 50 to put AGE in the range ~[0,2]
-            m[0, i] = feat_values[i] / 50
+            m[0, i] = feat_values[i] / AGE_DENOMINATOR
             # Works like a bias in a layer without bias
             # m[1, i] = 1 #REMOVE
 
@@ -293,8 +295,7 @@ class DiabDataset(Dataset):
         soft_label_topline : float, optional
             Value to positive probabilities, by default 1.0.
         soft_label_baseline_slope : float, optional
-            Decrease in negative probabilities uncertainty. Unevenness between
-            20 yo and 80 yo, by default 0.0.
+            Decrease in negative probabilities uncertainty, by default 0.0.
         device : str, optional
             Tensor device, by default "cuda".
         """
@@ -369,8 +370,7 @@ class DiabDataset(Dataset):
         topline : float
             Value to positive probabilities
         baseline_slope : float
-            Decrease in negative probabilities uncertainty. Unevenness between
-            20 yo and 80 yo.
+            Decrease in negative probabilities uncertainty.
 
         Returns
         -------
@@ -384,8 +384,9 @@ class DiabDataset(Dataset):
         ValueError
             `soft_label_baseline_slope` must be a negative floating point or
             zero.
+        ValueError
+            `soft_label_baseline_slope` must be  greater than (-baseline/120).
         """
-        # Check arguments
         if baseline >= topline:
             raise ValueError(
                 "`soft_label_topline` must be greater than \
@@ -396,18 +397,21 @@ class DiabDataset(Dataset):
                 "`soft_label_baseline_slope` must be a negative floating point \
                     or zero."
             )
+        # baseline don't touch x axis (x=0) before 120
+        if baseline_slope < (-baseline / SOFT_LABEL_MIN_X_INTERCEPT):
+            raise ValueError(
+                "`soft_label_baseline_slope` must be greater than (-baseline/120)"
+            )
 
-        # Correct target labels with soft labels method
+
+                # Correct target labels with soft labels method
         if baseline_slope == 0.0:
             soft_labels = np.maximum(self._raw_labels * topline, baseline)
         else:
             # Base adjusted considering age of the subject
             # NOTE: The younger the greater uncertainty about its negative
             #  label
-            ages = np.minimum(np.maximum(self._ages, 20.0), 70.0)
-            base_adjusted_by_age = np.maximum(
-                baseline + baseline_slope * (ages - 20.0) / (70.0 - 20.0), 0
-            )
+            base_adjusted_by_age = baseline + baseline_slope * self._ages
             soft_labels = np.maximum(self._raw_labels * topline, base_adjusted_by_age)
 
         return soft_labels

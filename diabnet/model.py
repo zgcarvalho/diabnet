@@ -1,3 +1,4 @@
+from diabnet.data import AGE_DENOMINATOR
 import torch
 from torch import nn
 
@@ -200,19 +201,11 @@ class Model(nn.Module):
                     torch.ones(1).to(y.device),
                 )
             else:
-                ages = torch.minimum(
-                    torch.maximum(ages, torch.tensor([0.4]).to(y.device)),
-                    torch.tensor([1.4]).to(y.device),
-                )
-                base = torch.maximum(
-                    self.soft_label_baseline
-                    + self.soft_label_baseline_slope * (ages - 0.4) / (1.4 - 0.4),
-                    torch.zeros(1).to(y.device),
-                )
+                base_adjusted_by_age = self.soft_label_baseline + self.soft_label_baseline_slope * (ages * AGE_DENOMINATOR)
                 top = torch.ones(1).to(y.device) * self.soft_label_topline
                 return torch.minimum(
                     torch.maximum(
-                        (y - base) / (top - base), torch.zeros(1).to(y.device)
+                        (y - base_adjusted_by_age) / (top - base_adjusted_by_age), torch.zeros(1).to(y.device)
                     ),
                     torch.ones(1).to(y.device),
                 )
