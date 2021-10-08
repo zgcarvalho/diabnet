@@ -6,7 +6,7 @@ from torch.utils.data import random_split
 from diabnet.data import get_feature_names, DiabDataset
 from diabnet.train import train
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data/datasets")
 
 CATALOG = {
     "positive": os.path.join(
@@ -172,6 +172,9 @@ def train_from_cfg_file(config: Dict[str, Dict[str, Any]]) -> None:
             else:
                 # Create basename for files
                 basename = f"model-{dataset}-{parameters['hidden-neurons']}-{parameters['optimizer']}-{parameters['lc-layer']}-{d}"
+                if 'without' in config['title']:
+                    t = config['title']
+                    basename += f"-{t[t.find('without'):]}"
 
                 # Prepare output prefix
                 prefix = f"results/models/{dataset}/{basename}"
@@ -189,6 +192,7 @@ def train_from_cfg_file(config: Dict[str, Dict[str, Any]]) -> None:
 
 def main() -> None:
     """Argument parser for training DiabNet with a configuration file."""
+
     from diabnet import __name__, __version__
     import argparse
     import toml

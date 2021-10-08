@@ -6,7 +6,7 @@ authors = ["Jose Geraldo de Carvalho Pereira <zgcarvalho@outlook.com>", "João V
 
 [tool.poetry.dependencies]
 python = ">=3.7"
-torch = "^1.9.0"
+torch = "^1.9.1+cu111"
 numpy = "^1.19.4"
 pandas = "^1.1.4"
 matplotlib = "^3.3.3"
@@ -21,6 +21,7 @@ captum = "^0.3.1"
 uncertainty-calibration = "^0.0.9"
 flake8 = "^3.9.2"
 tqdm = "^4.61.1"
+statsmodels = "^0.12.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
@@ -30,6 +31,7 @@ pylint = ">=2.6.0"
 black = "^21.6b0"
 importlib-metadata = "^4.6.0"
 ipykernel = "^5.5.3"
+pyright = "^0.0.9"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

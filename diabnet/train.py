@@ -10,6 +10,7 @@ from sklearn.metrics import (
     roc_auc_score,
     average_precision_score,
     fbeta_score,
+    brier_score_loss,
 )
 from typing import Dict, Any, Optional
 import datetime
@@ -280,10 +281,11 @@ def train(
             fscore = fbeta_score(t_b, p_b, beta=1.0)
             auroc = roc_auc_score(t_b, p)
             avg_prec = average_precision_score(t_b, p)
+            brier = brier_score_loss(t_b, p)
 
         # Ignore epoch loss when optimizing hyperparameters
         if not is_trial:
-            status_0 = f"V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}, avg_prec {avg_prec}, fscore {fscore}"
+            status_0 = f"V epoch {e}, loss {loss.item()}, acc {acc:.3}, bacc {bacc:.3}, ece {ece.item():.3}, mce {mce.item():.3}, auc {auroc}, avg_prec {avg_prec}, fscore {fscore}, brier {brier}"
             status_1 = f"line is true, column is pred\n{cm}"
             if logfile is None:
                 print(status_0)
@@ -307,6 +309,7 @@ def train(
             f.write(f"\nMCE: {mce.item()}\n")
             f.write(f"\nAUC-ROC: {auroc}\n")
             f.write(f"\nAVG-PREC: {avg_prec}\n")
+            f.write(f"\nBrier: {brier}\n")
             f.write(f"\nConfusion matrix:\n{cm}\n")
             f.write(f"\nT Loss: {training_loss}\n")
             f.write(f"\nT Loss(reg): {training_loss_reg}\n")
@@ -325,4 +328,5 @@ def train(
         auroc,
         avg_prec,
         fscore,
+        brier, 
     )
