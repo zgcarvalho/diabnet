@@ -394,13 +394,15 @@ class DiabDataset(Dataset):
             )
         if baseline_slope > 0.0:
             raise ValueError(
-                "`soft_label_baseline_slope` must be a negative floating point \
-                    or zero."
+                f"`soft_label_baseline_slope` must be a negative floating point \
+                    or zero. {baseline_slope}"
             )
         # baseline don't touch x axis (x=0) before 120
+        # print("Values", baseline_slope, (-baseline / SOFT_LABEL_MIN_X_INTERCEPT))
+        # if baseline_slope < (-baseline / SOFT_LABEL_MIN_X_INTERCEPT) and not baseline_slope == 0.0:
         if baseline_slope < (-baseline / SOFT_LABEL_MIN_X_INTERCEPT):
             raise ValueError(
-                "`soft_label_baseline_slope` must be greater than (-baseline/120)"
+                f"`soft_label_baseline_slope` must be greater than (-baseline/120), {baseline_slope}, {baseline}, {(-baseline / SOFT_LABEL_MIN_X_INTERCEPT)}"
             )
 
 
@@ -425,10 +427,10 @@ class DiabDataset(Dataset):
         return self.features[idx], self.labels[idx]
 
     # FIXME: Seem unused -> Remove
-    # def adjust_soft_label(
-    #     self, baseline: float, topline: float, baseline_slope: float
-    # ) -> None:
-    #     labels = self._soft_label(baseline, topline, baseline_slope)
-    #     self.labels = torch.unsqueeze(torch.tensor(labels, dtype=torch.float), 1).to(
-    #         "cuda"
-    #     )
+    def adjust_soft_label(
+        self, baseline: float, topline: float, baseline_slope: float
+    ) -> None:
+        labels = self._soft_label(baseline, topline, baseline_slope)
+        self.labels = torch.unsqueeze(torch.tensor(labels, dtype=torch.float), 1).to(
+            "cuda"
+        )
