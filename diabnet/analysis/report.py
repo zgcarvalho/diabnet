@@ -19,6 +19,7 @@ from sklearn.metrics import (
     average_precision_score,
     precision_score,
     recall_score,  # if pos_label = (sensitivity or TPR) if neg_label = (specificity or TNR)
+    confusion_matrix,
 )
 import sys
 
@@ -40,7 +41,7 @@ sns.set_style("whitegrid")
 sns.set_style("ticks", {"axes.grid": True, "grid.color": ".95", "grid.linestyle": "-"})
 
 
-def ece(targets, preds, bins=10):
+def ece(targets, preds, bins=5):
     """ECE - Expected Calibration Error
     Ref: On Calibration of Modern Neural Networks (https://arxiv.org/abs/1706.04599)
     """
@@ -65,7 +66,7 @@ def ece_(targets, preds, bins=10):
     return calibration.get_ece(preds, targets, num_bins=bins)
 
 
-def mce(targets, preds, bins=10):
+def mce(targets, preds, bins=5):
     """MCE - Maximum Calibration Error
     Ref: On Calibration of Modern Neural Networks (https://arxiv.org/abs/1706.04599)
     """
@@ -297,7 +298,7 @@ class DiabNetReport:
                 self.feat_names,
                 self.predictor,
             )
-            db.df = db.df[(db.df.T2D > 0.5) | (db.df.AGE >= 50)]
+            db.df = db.df[(db.df.T2D > 0.5) | (db.df.AGE > 50)]
             self._dataset_test_unique_subset_neg_older50 = db
         return self._dataset_test_unique_subset_neg_older50
 
@@ -494,6 +495,23 @@ class DiabNetReport:
 
     def mce_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
         return self._mce(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha)
+
+    @staticmethod
+    def _confusion(db, interval, bootnum, alpha):
+        # return db.bootstrap(
+        #     lambda labels, preds: confusion_matrix(labels, np.round(preds), normalize='true'),
+        #     num=bootnum, 
+        #     alpha=alpha, 
+        #     interval=interval
+        # )
+        return confusion_matrix(db.labels, np.round(db.predictions))
+
+    def confusion(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._confusion(self.dataset_test_unique, interval, bootnum, alpha)
+
+    def confusion_neg_older50(self, interval="CI", bootnum=5000, alpha=0.05):
+        return self._confusion(self.dataset_test_unique_subset_neg_older50, interval, bootnum, alpha) 
+    
 
     ##########
 

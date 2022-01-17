@@ -11,6 +11,8 @@ from sklearn.utils.validation import indexable
 from captum.attr import IntegratedGradients
 from diabnet.data import encode_features
 
+
+
 COLORS = sns.color_palette("colorblind")
 
 # --------------------------------------------------------------------------- #
@@ -153,14 +155,14 @@ def plot_loss(data, ax, color) -> None:
     ax.fill_between(x, y_vmin, y_vmax, alpha=0.2, linewidth=0, facecolor=color)
 
     # Labels
-    plt.ylabel("Loss", fontsize=9)
+
+    plt.ylabel("Loss")
 
     # Limits
     plt.xlim(-3, 303)
 
     # Ticks
-    plt.yticks(np.arange(0.4, 1.05, 0.2), fontsize=9)
-    plt.xticks(fontsize=9)
+    plt.yticks(np.arange(0.62, 0.75, 0.1))
     plt.tick_params(length=1)
 
     return ax
@@ -198,16 +200,16 @@ def plot_bacc(data, ax, colors):
         ax.fill_between(x, y_min, y_max, alpha=0.2, linewidth=0.0, facecolor=colors[i])
 
     # Labels
-    plt.xlabel("epoch", fontsize=9)
-    plt.ylabel("Balanced accuracy (%)", fontsize=9)
+    plt.xlabel("epoch")
+    plt.ylabel("Balanced accuracy (%)")
 
     # Limits
     plt.ylim(40, 100)
     plt.xlim(-3, 303)
 
     # Ticks
-    plt.yticks(np.arange(40, 101, 10), fontsize=9)
-    plt.xticks(fontsize=9)
+    plt.yticks(np.arange(40, 101, 10))
+
 
     return ax
 
@@ -229,6 +231,8 @@ from sklearn.metrics import (
 )
 from sklearn.neighbors import KernelDensity
 from scipy.stats import norm
+from sklearn.calibration import calibration_curve
+import matplotlib.patches as mpatches
 
 def plot_metrics(r, interval="HDI"):
     """Plot testing metrics.
@@ -242,8 +246,8 @@ def plot_metrics(r, interval="HDI"):
     """
     metrics = OrderedDict(
         {
-            "AUC": [r.auc, r.auc_neg_older50],
-            "AvgPrec": [r.average_precision, r.average_precision_neg_older50],
+            "AUROC": [r.auc, r.auc_neg_older50],
+            "AUPRC": [r.average_precision, r.average_precision_neg_older50],
             "BACC": [r.bacc, r.bacc_neg_older50],
             # 'ACC': [r.acc, r.acc_neg_older50],
             "F1": [r.f1, r.f1_neg_older50],
@@ -256,9 +260,12 @@ def plot_metrics(r, interval="HDI"):
         }
     )
     co = sns.color_palette("coolwarm", n_colors=33)
-    fig, (ax0, ax1) = plt.subplots(ncols=2, sharey=True, dpi=300)
-    ax0.set_title("Full test set", fontsize=14)
-    ax1.set_title("Subset without\nnegatives younger than 50", fontsize=10)
+    # fig = plt.figure(dpi=300)
+    # ax0 = fig.add_subplot(221)
+    # ax1 = fig.add_subplot(222)
+    fig, ((ax0, ax1), (ax2, ax3)) = plt.subplots(2,2, figsize=(8, 8), gridspec_kw={'height_ratios': [3, 1]})
+    ax0.set_title("Full test set", fontsize=15)
+    ax1.set_title("Subset without\nnegatives younger than 50", fontsize=14)
     for (i, k) in enumerate(metrics.keys()):
         v = metrics[k][0](bootnum=1000, interval=interval)
         ax0.errorbar(
@@ -288,6 +295,42 @@ def plot_metrics(r, interval="HDI"):
     ax0.set_ylim(len(metrics), -1)
     ax0.set_yticks(range(len(metrics)))
     ax0.set_yticklabels(metrics.keys())
+    ax1.set_ylim(len(metrics), -1)
+    ax1.set_yticks(range(len(metrics)))
+    ax1.set_yticklabels("")
+
+    conf_matrix = r.confusion()
+    conf_matrix_50 = r.confusion_neg_older50()
+    ax2.matshow(conf_matrix, cmap=plt.cm.Purples, alpha=0.3)
+    for i in range(conf_matrix.shape[0]):
+        for j in range(conf_matrix.shape[1]):
+            ax2.text(x=j, y=i,s=conf_matrix[i, j], va='center', ha='center', size='large')
+
+    ax3.matshow(conf_matrix_50, cmap=plt.cm.Purples, alpha=0.3)
+    for i in range(conf_matrix_50.shape[0]):
+        for j in range(conf_matrix_50.shape[1]):
+            ax3.text(x=j, y=i,s=conf_matrix_50[i, j], va='center', ha='center', size='large')
+
+    ax2.set_xlabel("Predicted", fontsize=18)
+    ax2.set_ylabel("Actual", fontsize=18)
+    ax2.set_yticks(range(2))
+    ax2.set_yticklabels(["N", "P"])
+    ax2.set_xticks(range(2))
+    ax2.set_xticklabels(["N", "P"])
+    ax2.xaxis.tick_bottom()
+    ax2.grid(False)
+
+    ax3.set_xlabel("Predicted", fontsize=18)
+    ax3.set_ylabel("Actual", fontsize=18)
+    ax3.set_yticks(range(2))
+    ax3.set_yticklabels(["N", "P"])
+    ax3.set_xticks(range(2))
+    ax3.set_xticklabels(["N", "P"])
+    ax3.xaxis.tick_bottom()
+    ax3.grid(False)
+
+    # print()
+    # print(r.confusion_neg_older50())
 
     return fig
 
@@ -344,6 +387,9 @@ def _roc_b(
 
     fpr, tpr, _ = roc_curve(db.labels, db.predictions)
     ax.plot(fpr, tpr, color=colors[0])
+    ax.text(0.7, 0.08, f'AUROC: {np.mean(aucs):.3f}', fontsize=21, horizontalalignment='center')
+    ax.text(0.7, 0.05, f'{int((1-alpha)*100)}% {interval}: [{aucs[idx[0]]:.3f}, {aucs[idx[-1]]:.3f}]', fontsize=13, horizontalalignment='center')
+
 
     ax.plot([0, 1], [0, 1], color=COLORS[7], linewidth=0.5)
     ax.set_ylim(0, 1)
@@ -437,9 +483,10 @@ def _roc_by_ages(db, ax):
         
 
     ax.legend(
-        title='Age : AUC',
+        title='Age : AUROC',
+        title_fontsize='large',
         loc="lower right",
-        prop={'size': 8},
+        prop={'size': 13},
     )
     ax.plot([0, 1], [0, 1], color=COLORS[7], linewidth=0.5)
     ax.set_ylim(0, 1)
@@ -448,22 +495,32 @@ def _roc_by_ages(db, ax):
     ax.set_ylabel("True Positive Rate")
 
 def plot_roc_by_age(r):
-    fig = plt.figure(figsize=(6, 6), dpi=300)
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
     ax1 = fig.add_subplot(111)
     _roc_by_ages(r.dataset_test_unique, ax1)
-    # return fig
+    return fig
+
+def plot_roc_by_age_neg_older50(r):
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
+    ax1 = fig.add_subplot(111)
+    _roc_by_ages(r.dataset_test_unique_subset_neg_older50, ax1)
+    return fig
 
 def plot_roc(r, interval="HDI"):
-    fig = plt.figure(figsize=(6, 6), dpi=300)
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
     ax1 = fig.add_subplot(111)
     c = [COLORS[2], "gainsboro"]
     _roc_b(
         r.dataset_test_unique, ax1, num=2000, alpha=0.05, interval=interval, colors=c
     )
-    # return fig
+    return fig
 
 def plot_roc_neg_older50(r, interval="HDI"):
-    fig = plt.figure(figsize=(6, 6), dpi=300)
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
     ax1 = fig.add_subplot(111)
     c = [COLORS[0], "gainsboro"]
     _roc_b(
@@ -474,10 +531,11 @@ def plot_roc_neg_older50(r, interval="HDI"):
         interval=interval,
         colors=c,
     )
-    # return fig
+    return fig
 
 def plot_roc_comp(r, interval="HDI"):
-    fig = plt.figure(figsize=(6, 6), dpi=300)
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
     ax1 = fig.add_subplot(111)
     _roc_b_comp(
         r.dataset_test_unique,
@@ -487,7 +545,7 @@ def plot_roc_comp(r, interval="HDI"):
         alpha=0.05,
         interval=interval,
     )
-    # return fig
+    return fig
 
 def _precision_recall_b(
     db, ax, num=1000, alpha=0.05, interval="CI", colors=[COLORS[2], "gainsboro"]
@@ -535,6 +593,8 @@ def _precision_recall_b(
 
     precision, recall, _ = precision_recall_curve(db.labels, db.predictions)
     ax.step(recall, precision, where="post", color=colors[0])
+    ax.text(0.3, 0.08, f'AUPRC: {np.mean(avgps):.3f}', fontsize=21, horizontalalignment='center')
+    ax.text(0.3, 0.05, f'{int((1-alpha)*100)}% {interval}: [{avgps[idx[0]]:.3f}, {avgps[idx[-1]]:.3f}]', fontsize=13, horizontalalignment='center')
 
     ax.plot([0, 1], [0, 1], color=COLORS[7], linewidth=0.5)
     ax.set_ylim(0, 1)
@@ -634,8 +694,8 @@ def _precision_recall_b_comp(
     ax.plot([0, 1], [0, 1], color=COLORS[7], linewidth=0.5)
     ax.set_ylim(0, 1)
     ax.set_xlim(0, 1)
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
+    ax.set_xlabel("Recall")
+    ax.set_ylabel("Precision")
 
 def _precision_recall_by_ages(db, ax):
     colors = sns.color_palette("BrBG_r", n_colors=12)
@@ -653,32 +713,43 @@ def _precision_recall_by_ages(db, ax):
         )
 
     ax.legend(
-        title='Age : AP',
+        title='Age : AUPRC',
+        title_fontsize='large',
         loc="lower left",
-        prop={'size': 8},
+        prop={'size': 13},
     )
     ax.set_ylim(0, 1)
     ax.set_xlim(0, 1)
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
+    ax.set_xlabel("Recall")
+    ax.set_ylabel("Precision")
 
 def plot_precision_recall_by_age(r):
-    fig = plt.figure(figsize=(6, 6), dpi=300)
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
     ax1 = fig.add_subplot(111)
     _precision_recall_by_ages(r.dataset_test_unique, ax1)
-    # return fig
+    return fig
+
+def plot_precision_recall_by_age_neg_older50(r):
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
+    ax1 = fig.add_subplot(111)
+    _precision_recall_by_ages(r.dataset_test_unique_subset_neg_older50, ax1)
+    return fig
 
 def plot_precision_recall(r, interval="HDI"):
-    fig = plt.figure(figsize=(6, 6), dpi=300)
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
     ax1 = fig.add_subplot(111)
     c = [COLORS[2], "gainsboro"]
     _precision_recall_b(
         r.dataset_test_unique, ax1, num=2000, alpha=0.05, interval=interval, colors=c
     )
-    # return fig
+    return fig
 
 def plot_precision_recall_neg_older50(r, interval="HDI"):
-    fig = plt.figure(figsize=(6, 6), dpi=300)
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
     ax1 = fig.add_subplot(111)
     c = [COLORS[0], "gainsboro"]
     _precision_recall_b(
@@ -689,20 +760,21 @@ def plot_precision_recall_neg_older50(r, interval="HDI"):
         interval=interval,
         colors=c,
     )
+    return fig
 
 def plot_precision_recall_comp(r, interval="HDI"):
-
-    fig = plt.figure(figsize=(6, 6), dpi=300)
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8, 8))
     ax1 = fig.add_subplot(111)
     _precision_recall_b_comp(r.dataset_test_unique, r.dataset_test_unique_subset_neg_older50, ax1, num=1000, alpha=0.05, interval=interval)
-    # return fig
+    return fig
 
 def _kde_plot(x,ax,color):
     if len(x) > 100:
         x = x[::100]
     x_d = np.linspace(0, 1, 1000)
 
-    kde = KernelDensity(bandwidth=0.11, kernel='gaussian', metric='euclidean')
+    kde = KernelDensity(bandwidth=0.17, kernel='gaussian', metric='euclidean')
     kde.fit(x[:, None])
 
     # score_samples returns the log of the probability density
@@ -711,17 +783,18 @@ def _kde_plot(x,ax,color):
 
     ax.plot(x_d, prob, color=color)
 
-def plot_first_positives_lines(r, age_separator=50):
+def plot_first_positives_lines(r, age_separator=(40,60)):
     db = r.dataset_test_first_diag
     pos_mask = db.labels == 1
     pred = np.stack([db.predictions_per_age[age][pos_mask] for age in range(20,80,5)], axis=0)
-    age_above_50 = db.df.AGE.values[pos_mask] >= age_separator
-    age_below_50 = db.df.AGE.values[pos_mask] < age_separator
+    age_below = db.df.AGE.values[pos_mask] < age_separator[0]  
+    age_above = db.df.AGE.values[pos_mask] >= age_separator[1] 
+    
 
     neg = r.negatives_older60
-    pred_below_50 = [np.array(x) for x in pred[:,age_below_50]]
-    pred_below_50 = [x for x in pred[:,age_below_50]]
-    pred_above_50 = [np.array(x) for x in pred[:,age_above_50]]
+    pred_below = [np.array(x) for x in pred[:,age_below]]
+    pred_below = [x for x in pred[:,age_below]]
+    pred_above = [np.array(x) for x in pred[:,age_above]]
 
     # color_boxplot = sns.color_palette("copper_r", n_colors=14)
     color_boxplot = sns.color_palette("BrBG_r", n_colors=12)
@@ -729,90 +802,92 @@ def plot_first_positives_lines(r, age_separator=50):
     # bandwidth(pred_below_50[4])
 
     # fig, (ax0, ax1, ax2) = plt.figure(figsize=(15,5), dpi=300)
-    fig, (ax0, ax1, ax2) = plt.subplots(ncols=3, sharey=False, dpi=300, figsize=(16,5))
+    fig, (ax0, ax1, ax2) = plt.subplots(ncols=3, sharey=False, figsize=(18,6))
     # ax0 = plt.subplot(131)
     for i in range(12):
-        kde0 = _kde_plot(pred_below_50[i], ax0, color=color_boxplot[i])
-    ax0.set_title(f"positives\n(age < {age_separator} )")
-    ax0.set_ylabel("density")
-    ax0.set_xlabel("probability")
+        kde0 = _kde_plot(pred_below[i], ax0, color=color_boxplot[i])
+    ax0.set_title(f"Diabetics\n(first diagnostic before {age_separator[0]} years)")
+    ax0.set_ylabel("Density", fontsize=15)
+    ax0.set_xlabel("Risk score", fontsize=15)
     ax0.set_xlim(-0.01, 1.01)
-    ax0.set_ylim(-0.0001, 3.6)
+    ax0.set_ylim(-0.0001, 2.5)
 
     # ax1.subplot(132)
     for i in range(12):
-        kde1 = _kde_plot(pred_above_50[i], ax1, color=color_boxplot[i])
-    ax1.set_title(f"positives\n(age >= {age_separator} )")
-    ax1.set_ylabel("density")
-    ax1.set_xlabel("probability")
+        kde1 = _kde_plot(pred_above[i], ax1, color=color_boxplot[i])
+    ax1.set_title(f"Diabetics\n(first diagnostic after {age_separator[1]} years)")
+    ax1.set_ylabel("Density", fontsize=15)
+    ax1.set_xlabel("Risk score", fontsize=15)
     ax1.set_xlim(-0.01, 1.01)
-    ax1.set_ylim(-0.0001, 3.6)
+    ax1.set_ylim(-0.0001, 2.5)
     
     # ax2.subplot(133)
     for i in range(12):
         kde2 = _kde_plot(neg[0][i], ax2, color=color_boxplot[i])
-    ax2.set_title("negatives\n(age >= 60)")
-    ax2.set_ylabel("density")
-    ax2.set_xlabel("probability")
+    ax2.set_title("Non-diabetics\n(with 60 years or more)")
+    ax2.set_ylabel("Density", fontsize=15)
+    ax2.set_xlabel("Risk score", fontsize=15)
     ax2.set_xlim(-0.01, 1.01)
-    ax2.set_ylim(-0.0001, 3.6)
+    ax2.set_ylim(-0.0001, 2.5)
     fig.tight_layout(pad=1)
-
  
-
     cmap = mpl.colors.ListedColormap([color_boxplot[i] for i in range(12)])
     norm = mpl.colors.Normalize(vmin=17.5, vmax=77.5)
-    cbax = fig.add_axes([1.0, 0.13, 0.02, 0.76]) 
+    cbax = fig.add_axes([1.0, 0.13, 0.02, 0.70]) 
     fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
-                cax=cbax, orientation='vertical', label='Age (model input)',ticks=np.arange(20,80,5))
+                cax=cbax, orientation='vertical',ticks=np.arange(20,80,5))
+    cbax.set_ylabel('Age (model input)', fontsize=15)
 
-    # return fig
+    return fig
 
-def plot_first_positives_boxplot(r, age_separator=50):
+def plot_first_positives_boxplot(r, age_separator=(40,60)):
     db = r.dataset_test_first_diag
     pos_mask = db.labels == 1
     pred = np.stack([db.predictions_per_age[age][pos_mask] for age in range(20,80,5)], axis=0)
-    age_above_50 = db.df.AGE.values[pos_mask] >= age_separator
-    age_below_50 = db.df.AGE.values[pos_mask] < age_separator
+    age_below = db.df.AGE.values[pos_mask] < age_separator[0]
+    age_above = db.df.AGE.values[pos_mask] >= age_separator[1]
+    
 
     neg = r.negatives_older60
-    pred_below_50 = [np.array(x) for x in pred[:,age_below_50]]
-    pred_below_50 = [x for x in pred[:,age_below_50]]
-    pred_above_50 = [np.array(x) for x in pred[:,age_above_50]]
+    pred_below = [np.array(x) for x in pred[:,age_below]]
+    pred_below = [x for x in pred[:,age_below]]
+    pred_above = [np.array(x) for x in pred[:,age_above]]
 
     color_boxplot = sns.color_palette("Spectral_r", n_colors=20)
     # color_boxplot = sns.color_palette("cool", n_colors=20)
 
-    fig, (ax0, ax1, ax2) = plt.subplots(ncols=3, sharey=False, dpi=300, figsize=(16,5))
+    fig, (ax0, ax1, ax2) = plt.subplots(ncols=3, sharey=False, figsize=(18,6))
     # box 01
     ax0.boxplot(
-            pred_below_50,
+            pred_below,
             showfliers=False,
             patch_artist=True,
             labels=[i for i in neg[1]],
             medianprops=dict(linewidth=2.5, color="black"),
     )
-    colors = [color_boxplot[int(np.mean(a) * 20)] for a in pred_below_50]
+    colors = [color_boxplot[int(np.mean(a) * 20)] for a in pred_below]
     for (i,box) in enumerate(ax0.artists):
         box.set_facecolor(colors[i])
-    ax0.set_title("positives\n(age < 50 )")
-    ax0.set_ylabel("probability")
-    ax0.set_xlabel("age (model input)")
+    # ax0.set_title("positives\n(age < 50 )")
+    ax0.set_title(f"Diabetics\n(first diagnostic before {age_separator[0]} years)")
+    ax0.set_ylabel("Risk score", fontsize=15)
+    ax0.set_xlabel("Age (model input)", fontsize=15)
     ax0.set_ylim(0, 1)
 
     ax1.boxplot(
-            pred_above_50,
+            pred_above,
             showfliers=False,
             patch_artist=True,
             labels=[i for i in neg[1]],
             medianprops=dict(linewidth=2.5, color="black"),
     )
-    colors = [color_boxplot[int(np.mean(a) * 20)] for a in pred_above_50]
+    colors = [color_boxplot[int(np.mean(a) * 20)] for a in pred_above]
     for (i,box) in enumerate(ax1.artists):
         box.set_facecolor(colors[i])
-    ax1.set_title("positives\n(age >= 50 )")
-    ax1.set_ylabel("probability")
-    ax1.set_xlabel("age (model input)")
+    # ax1.set_title("positives\n(age >= 50 )")
+    ax1.set_title(f"Diabetics\n(first diagnostic after {age_separator[1]} years)")
+    ax1.set_ylabel("Risk score", fontsize=15)
+    ax1.set_xlabel("Age (model input)", fontsize=15)
     ax1.set_ylim(0, 1)
 
     ax2.boxplot(
@@ -825,20 +900,23 @@ def plot_first_positives_boxplot(r, age_separator=50):
     colors = [color_boxplot[int(np.mean(a) * 20)] for a in neg[0]]
     for (i,box) in enumerate(ax2.artists):
         box.set_facecolor(colors[i])
-    ax2.set_title("negatives\n(age >= 60)")
-    ax2.set_ylabel("probability")
-    ax2.set_xlabel("age (model input)")
+    # ax2.set_title("negatives\n(age >= 60)")
+    ax2.set_title("Non-diabetics\n(with 60 years or more)")
+    ax2.set_ylabel("Risk score", fontsize=15)
+    ax2.set_xlabel("Age (model input)", fontsize=15)
     ax2.set_ylim(0, 1)
 
     fig.tight_layout(pad=1)
 
     cmap = mpl.colors.ListedColormap([color_boxplot[i] for i in range(20)])
     norm = mpl.colors.Normalize(vmin=0, vmax=1)
-    cbax = fig.add_axes([1.0, 0.13, 0.02, 0.76]) 
+    cbax = fig.add_axes([1.0, 0.13, 0.02, 0.70]) 
     fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
-                cax=cbax, orientation='vertical', label='E(x)',ticks=np.arange(0,1.01,.1))
+                cax=cbax, orientation='vertical', ticks=np.arange(0,1.01,.1))
+    # cbax.tick_params(labelsize=15)
+    cbax.set_ylabel(r'$\mathbb{E}$ [risk score]', fontsize=15)
     
-    # return fig
+    return fig
 
 def plot_core_family(r):
     db = r.dataset_test_unique
@@ -938,6 +1016,7 @@ def plot_core_family(r):
         plt.ylim(0, 1)
         plt.xticks(range(12), np.arange(20, 80, 5))
     plt.tight_layout(pad=1)
+    
 
 def plot_family(r):
         db = r.dataset_test_unique
@@ -986,9 +1065,191 @@ def plot_family(r):
 
         # plt.show()
 
+# calibration
+def plot_calibration_line(r):
+    fig = plt.figure(figsize=(6, 6), dpi=300)
+
+    # Create subplot
+    ax = fig.add_subplot(111)
+
+    # Plot calibration curve
+    fraction_of_positives, mean_predicted_value = calibration_curve(
+        r.dataset_test_unique.labels, 
+        r.dataset_test_unique.predictions, 
+        n_bins=10, 
+        strategy='quantile'
+    )
+
+    # Plot perfectly calibrated curve
+    ax.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+
+    # Plot DiabNet curve
+    ax.plot(mean_predicted_value, fraction_of_positives, label="Uncalibrated DiabNet")
+
+    # Get ECE
+    ece = r.ece(bootnum=10000, interval='HDI')
+
+    # Get MCE
+    mce = r.mce(bootnum=10000, interval='HDI')
+
+    # Get Brier Score
+    brier = r.brier(bootnum=10000, interval='HDI')
+
+    # # ECE and MCE legend
+    ECE = mpatches.Patch(color=COLORS[1], label='ECE = {:.2f}%'.format(ece['value']*100))
+    MCE = mpatches.Patch(color=COLORS[2], label='MCE = {:.2f}%'.format(mce['value']*100))
+    BRIER = mpatches.Patch(color=COLORS[3], label='Brier Score = {:.2f}'.format(brier['value']))
+
+    # Configuring plot
+    ax.set_title('Calibration curve (Reliability curve)')
+    ax.set_ylabel('Fraction of positives')
+    ax.set_xlabel('Mean predicted value')
+
+    # Configure legend
+    legend1 = plt.legend(
+        title='Calibration curves',
+        loc="upper left",
+    )
+
+    legend2 = plt.legend(
+        loc="lower right",
+        handles=[ECE, MCE, BRIER]
+    )
+    ax.add_artist(legend1)
+    ax.add_artist(legend2)
+
+    # Display plot
+    plt.tight_layout()
+    plt.show()
+
+def ece_mce_t_p(preds, targets, bins=10):
+    from astropy.stats import bootstrap
+    lower_bound = np.arange(0.0, 1.0, 1.0/bins)
+    upper_bound = lower_bound + 1.0/bins
+    
+    ece = np.zeros(1)
+    mce = np.zeros(1)
+    t = np.zeros(bins)
+    p = np.zeros(bins)
+    interval_min = np.zeros(bins)
+    interval_max = np.zeros(bins)
+    
+    
+    
+    for i in range(bins):
+        mask = (preds > lower_bound[i]) * (preds <= upper_bound[i])
+        if np.any(mask):
+#             print(lower_bound[i], upper_bound[i])
+#             print(preds[mask])
+#             print(targets[mask])
+            t[i] = np.mean(targets[mask])
+            p[i] = np.mean(preds[mask])
+            # num of bootstraps is equal to  
+#             data = bootstrap(targets[mask], bootnum=10000, bootfunc=lambda x: np.mean(x) - t[i])
+            data = bootstrap(targets[mask], bootnum=10000, bootfunc=lambda x: np.mean(x))
+            data = np.sort(data)
+#             np.sort(data)
+            #print(st.sem(data))
+            #interval_min[i], interval_max[i] = st.t.interval(alpha=0.95, df=len(data)-1, loc=t[i], scale=st.sem(data))
+#             t[i], _, _, ci = jackknife_stats(targets[mask], np.mean, 0.95)
+#             interval_min[i], interval_max[i] = data[249], data[9749]
+            # interval_min[i], interval_max[i] = data[249]-t[i], data[9749]-t[i]
+            interval_min[i], interval_max[i] = data[499]-t[i], data[9500]-t[i]
+            delta = np.abs(np.mean(preds[mask]) - np.mean(targets[mask]))
+            ece += delta * np.mean(mask)
+            mce = np.maximum(mce, delta)
+#             print(ece, mce)
+            
+#     print(interval_min)
+#     print(interval_max)
+    return ece, mce, t, p, np.stack([np.abs(interval_min), interval_max])
+
+def plot_calibration(r):
+    BINS = 5
+    ece, mce, t, p, ece_ci = ece_mce_t_p(r.dataset_test_unique.predictions, r.dataset_test_unique.labels, bins=BINS)
+    # fig = plt.figure(figsize=(6, 6), dpi=300)
+    fig = plt.figure(figsize=(8,8))
+
+
+    # Create subplot
+    ax = fig.add_subplot(111)
+
+    # Plot calibration curve
+    fraction_of_positives, mean_predicted_value = calibration_curve(
+        r.dataset_test_unique.labels, 
+        r.dataset_test_unique.predictions, 
+        n_bins=5, 
+        strategy='quantile'
+    )
+    # print(fraction_of_positives)
+    # print(mean_predicted_value)
+
+    # Plot perfectly calibrated curve
+    ax.plot([0, 1], [0, 1], color=COLORS[7], linewidth=1, linestyle='dashed', label="Perfect calibration")
+
+    # Plot DiabNet curve
+    width = 1.0/BINS
+    xs = np.arange(width/2,1,width)
+    ax.bar(xs, t ,width, yerr=ece_ci, align='center', linewidth=1, alpha=0.99, edgecolor='k', color=COLORS[8], capsize=5.0, ecolor='k', error_kw=dict(mew=3, mfc='g'), label='Observed' )
+    #gap
+    ax.bar(xs, t-xs, width, xs, align='center', linewidth=0.5, alpha=1.0, edgecolor=COLORS[0], hatch='////', fill=False, label='Gap')
+    # ax.bar(mean_predicted_value, fra, width, xs, align='center', linewidth=0.1, alpha=0.5, color='red')
+    
+    # ax.plot(mean_predicted_value, fraction_of_positives, label="Uncalibrated DiabNet")
+    
+
+    # Get ECE
+    ece = r.ece(bootnum=10000, interval='HDI')['value']
+
+    # Get MCE
+    mce = r.mce(bootnum=10000, interval='HDI')['value']
+
+    # Get Brier Score
+    brier = r.brier(bootnum=10000, interval='HDI')['value']
+    ax.text(0.61, 0.03, f'ECE = {ece:.3f}\nMCE = {mce:.3f}\nBrier Score = {brier:.3f}', c='white', fontsize=18, horizontalalignment='left', bbox=dict(facecolor='k', ec='k'))
+
+    # # # ECE and MCE legend
+    # ECE = mpatches.Patch(color=COLORS[1], label='ECE = {:.2f}%'.format(ece['value']*100))
+    # MCE = mpatches.Patch(color=COLORS[2], label='MCE = {:.2f}%'.format(mce['value']*100))
+    # BRIER = mpatches.Patch(color=COLORS[3], label='Brier Score = {:.2f}'.format(brier['value']))
+
+    # Configuring plot
+    ax.set_title('Reliability diagram')
+    ax.set_ylabel('Fraction of positives')
+    ax.set_xlabel('Mean predicted value (Confidence)')
+
+    ax.set_ylim(0,1)
+    ax.set_xlim(0,1)
+    ax.set_yticks(np.arange(0,1.01, 0.1))
+    ax.set_xticks(np.arange(0,1.01, 0.1))
+
+    # # Configure legend
+    # legend1 = plt.legend(
+    #     title='Calibration curves',
+    #     loc="upper left",
+    # )
+
+    # legend2 = plt.legend(
+    #     loc="lower right",
+    #     handles=[ECE, MCE, BRIER]
+    # )
+    # ax.add_artist(legend1)
+    # ax.add_artist(legend2)
+    ax.legend(fontsize=18)
+
+    # Display plot
+    fig.tight_layout()
+    # plt.show()
+    return fig
+
 # --------------------------------------------------------------------------- #
 # -------------- Notebook 4: Family Cross Validation analysis --------------- #
+from diabnet.ensemble import Ensemble
+from diabnet.analysis.report import DiabNetReport
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
+COLORS_F = sns.color_palette("Set3")
 
 def _data2barplot(
     data: pd.DataFrame, selection: Optional[List[str]] = None, orient: str = "index"
@@ -1056,12 +1317,11 @@ def _data2barplot(
 
 def barplot(
     ax,
-    data: Dict[str, List[float]],
+    df,
     selection: Optional[List[str]] = None,
     labels: Optional[List[str]] = None,
     rotation: int = 0,
     ha: str = "center",
-    orient: str = "index",
     colors: Optional[Union[List[float], seaborn.palettes._ColorPalette]] = None,
     total_width: float = 0.9,
     single_width: float = 1,
@@ -1073,12 +1333,7 @@ def barplot(
     ----------
     ax : matplotlib.pyplot.axis
         The axis we want to draw our plot on.
-    data : Dict[str, List[float]]
-        A dictionary containing the data we want to plot. Keys are the names of the
-        data, the items is a list of the values.
-    selection : List[str], optional
-        A list of metrics to be ploted. I must only contain
-        header in data, by default None.
+    df : Dataframe
     labels : List[str], optional
         A list of labels to use as axis ticks. If we want to remove xticks, set
         to []. If None, use labels from _data2barplot, by default None.
@@ -1086,12 +1341,6 @@ def barplot(
         Rotation (degrees) of xticks, by default 0.
     ha : str {'left', 'center', 'right'}, optional
         Horizontal aligments of xticks, by default `center`.
-    orient : str {'dict', 'index'}, optional
-        Determines the type of the values of the dictionary, by default `index`.
-
-            * 'dict' : dict like {column -> {index -> value}}
-
-            * 'index' (default) : dict like {index -> {column -> value}}
     colors : Union[List[float], seaborn.palettes._ColorPalette], optional
         A list of colors which are used for the bars. If None, the colors
         will be the standard matplotlib color cylel, by default None.
@@ -1105,43 +1354,32 @@ def barplot(
     legend: bool, optional
         If this is set to true, a legend will be added to the axis, by default True.
     """
-    from matplotlib import pyplot as plt
-
-    # Check if colors where provided, otherwhise use the default color cycle
-    if colors is None:
-        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
-    # Prepare data
-    if labels is None:
-        data, labels = _data2barplot(data, selection=selection, orient=orient)
-    else:
-        data, _ = _data2barplot(data, selection=selection, orient=orient)
-
     # Number of bars per group
-    n_bars = len(data)
+    n_bars = df.count()[0]
+
+    colors_by_fam = {fam: colors[i] for i, fam in enumerate(df.sort_index().index)}
 
     # The width of a single bar
-    bar_width = total_width / n_bars
+    bar_width = total_width / (n_bars+1) # bar_width = 0.9/10
 
     # List containing handles for the drawn bars, used for the legend
     bars = []
-
-    # Iterate over all data
-    for i, (name, values) in enumerate(data.items()):
-        # The offset in x direction of that bar
-        x_offset = (i - n_bars / 2) * bar_width + bar_width / 2
-
-        # Draw a bar for every value of that type
-        for x, y in enumerate(values):
+    
+    for i, colname in enumerate(selection):
+        df_tmp = df.sort_values(by=colname)
+        x_offset = i
+        c = [colors_by_fam[f] for f in df_tmp.index]
+        for x, y in enumerate(df_tmp[colname].values):
             bar = ax.bar(
-                x + x_offset,
+                x * bar_width + x_offset - (bar_width * n_bars/2 - bar_width/2),
                 y,
                 width=bar_width * single_width,
-                color=colors[i % len(colors)],
+                color=c[x],
+                edgecolor='gainsboro',
+                linewidth=1,
             )
-
-        # Add a handle to the last drawn bar, which we'll need for the legend
         bars.append(bar[0])
+
 
     # Set x ticks
     ax.set_xticks(range(len(labels)), minor=False)
@@ -1149,15 +1387,307 @@ def barplot(
 
     # Draw legend if we need
     if legend:
-        ax.legend(bars, data.keys())
+        ax.legend(df.sort_values(by=df.columns[0]).index)
+
+    # from matplotlib import pyplot as plt
+
+    # # Check if colors where provided, otherwhise use the default color cycle
+    # if colors is None:
+    #     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    # # Prepare data
+    # if labels is None:
+    #     data, labels = _data2barplot(data, selection=selection, orient=orient)
+    # else:
+    #     data, _ = _data2barplot(data, selection=selection, orient=orient)
+
+    # # Number of bars per group
+    # n_bars = len(data)
+
+    # # The width of a single bar
+    # bar_width = total_width / n_bars
+
+    # # List containing handles for the drawn bars, used for the legend
+    # bars = []
+
+    # # Iterate over all data
+    # for i, (name, values) in enumerate(data.items()):
+    #     # The offset in x direction of that bar
+    #     x_offset = (i - n_bars / 2) * bar_width + bar_width / 2
+
+    #     # Draw a bar for every value of that type
+    #     for x, y in enumerate(values):
+    #         bar = ax.bar(
+    #             x + x_offset,
+    #             y,
+    #             width=bar_width * single_width,
+    #             color=colors[i % len(colors)],
+    #         )
+
+    #     # Add a handle to the last drawn bar, which we'll need for the legend
+    #     bars.append(bar[0])
+
+    # # Set x ticks
+    # ax.set_xticks(range(len(labels)), minor=False)
+    # ax.set_xticklabels(labels, rotation=rotation, ha=ha)
+
+    # # Draw legend if we need
+    # if legend:
+    #     ax.legend(bars, data.keys())
+
+def _get_families_data(r_families):
+    data = {}
+    for fam, r in r_families.items():
+        n = len(r.dataset_test_unique.labels)
+        data[fam] = {
+            "auc": r.auc(bootnum=1000, interval='HDI')['value'],
+            "f1": r.f1(bootnum=1000, interval='HDI')['value'],
+            "acc": r.acc(bootnum=1000, interval='HDI')['value'],
+            "bacc": r.bacc(bootnum=1000, interval='HDI')['value'],
+            "precision": r.precision(bootnum=1000, interval='HDI')['value'],
+            "sensitivity": r.sensitivity(bootnum=1000, interval='HDI')['value'],
+            "specificity": r.specificity(bootnum=1000, interval='HDI')['value'],
+            "avgprec": r.average_precision(bootnum=1000, interval='HDI')['value'],
+            "ece": r.ece(bootnum=10000, interval='HDI')['value'],
+            "mce": r.mce(bootnum=10000, interval='HDI')['value'],
+            "brier": r.brier(bootnum=10000, interval='HDI')['value'],
+            "n": n,
+            "pos%": sum(r.dataset_test_unique.labels)/n,
+        }
+    return pd.DataFrame.from_dict(data, orient='index')
+
+def _get_families_ages(r_families):
+    ages = {}
+    for fam, r in r_families.items():
+        ages[fam] = r.dataset_test_unique.df.AGE.values
+    return pd.DataFrame.from_dict(ages, orient='index').T
+
+def _get_families_confusion(r_families):
+    dtmp = pd.DataFrame()
+    for fam, r in r_families.items():
+        tmp = pd.DataFrame(
+        {
+            'age': r.dataset_test_unique.df.AGE.values,
+#             'targets': r.dataset_test_unique.labels,
+            'prediction': r.dataset_test_unique.predictions,
+            'label': r.dataset_test_unique.labels,
+            'famid': len(r.dataset_test_unique.labels) * [fam],
+            'is_correct': len(r.dataset_test_unique.labels) * [True], # init column
+        })
+        dtmp = dtmp.append(tmp)
+        
+    def confusion(row):
+        if row['prediction'] > 0.5 and row['label'] > 0.5:
+            return 'TP'
+        elif row['prediction'] <= 0.5 and row['label'] <= 0.5:
+            return 'TN'
+        elif row['prediction'] > 0.5 and row['label'] <= 0.5:
+            return 'FP'
+        elif row['prediction'] <= 0.5 and row['label'] > 0.5:
+            return 'FN'
+    dtmp['confusion'] = dtmp.apply(lambda row: confusion(row), axis=1)
+    dtmp.loc[(dtmp.confusion == 'FP') | (dtmp.confusion == 'FN'),'is_correct'] = False
+    # print(dtmp.where((dtmp.confusion == 'FP') | (dtmp.confusion == 'FN'), other=True)) 
+    return dtmp
+
+def plot_families_metrics(r_families):
+    # colors = sns.color_palette("Set3")
+    # Create figure
+    # fig, ax = plt.subplots(1, figsize=(20, 6), dpi=300)
+    fig, ax = plt.subplots(1, figsize=(18, 6))
+
+    data = _get_families_data(r_families)
+    # Barplot metrics
+    barplot(
+        ax,
+        data,
+        selection=[
+            "auc",
+            "avgprec",
+            "bacc",
+            "acc",
+            "f1",        
+            "precision",
+            "sensitivity",
+            "specificity",
+            "brier",
+            "ece",
+            "mce",
+            "pos%",
+        ],
+        labels=[
+            "AUROC",
+            "AUPRC",
+            "Balanced\nAccuracy",
+            "Accuracy",
+            "F1-Score", 
+            "Precision",
+            "Sensitivity",
+            "Specificity",
+            "Brier",
+            "ECE",
+            "MCE",
+            "Fraction of\npositives",
+        ],
+        rotation=0,
+        ha="center",
+        colors=COLORS_F,
+        total_width=0.9,
+        single_width=1,
+    )
+    return fig
+
+def plot_families_ages(r_families):
+    # fig, ax = plt.subplots(1, figsize=(16, 10), dpi=300)
+    fig, ax = plt.subplots(1, figsize=(18, 8))
+
+    ages = _get_families_ages(r_families)
+
+    # Plot boxplot for each family  
+    sns.boxplot(
+        data=ages, 
+        palette=COLORS_F, 
+        showmeans=True,
+        meanprops={"marker":"o", "markerfacecolor":"white", "markeredgecolor":"red"}
+    )
+
+    # Configuring plot
+    ax.set_xlabel('Family ID')
+    ax.set_ylabel('Age')
+
+    # Display plot
+    return fig
+
+def plot_families_confusion(r_families, with_boxplot=False):
+    # Create figure
+    # fig, ax = plt.subplots(1, figsize=(16, 10), dpi=300)
+    fig, ax = plt.subplots(1, figsize=(18, 10))
+
+    data = _get_families_confusion(r_families)
+
+    # Violin plot age
+    sns.stripplot(
+        data=data[data.is_correct], 
+        x='famid', 
+        y='age', 
+        hue='confusion',
+        hue_order=['', 'TN', 'FP', 'FN', 'TP', ''],
+        marker='o',
+        size=8,
+        dodge=True,
+        palette=['white', COLORS_F[3],COLORS_F[2],COLORS_F[1],COLORS_F[0], 'white'], 
+        # palette=COLORS_F,
+        jitter=0.25, 
+        linewidth=1,
+        ax=ax
+    )
+
+    # Violin plot age
+    sns.stripplot(
+        data=data[~data.is_correct],  
+        x='famid', 
+        y='age', 
+        hue='confusion',
+        hue_order=['', 'TN', 'FP', 'FN', 'TP', ''],
+        marker='X',
+        size=10,
+        dodge=True,
+        # palette=COLORS_F,
+        palette=['white', COLORS_F[3],COLORS_F[2],COLORS_F[1],COLORS_F[0], 'white'], 
+        jitter=0.05, 
+        linewidth=1,
+        ax=ax
+    )
+
+    if with_boxplot:
+        sns.boxplot(
+            data=data, 
+            x='famid', 
+            y='age',
+            color='gainsboro',
+            width=0.70,
+            boxprops=dict(alpha=.5),
+            linewidth=1,
+            showfliers = False,
+        )
+
+    # Configuring plot
+    ax.set_xlabel('Family ID', fontsize=18)
+    ax.set_ylabel('Age', fontsize=18)
+
+    # Configuring legend
+    ax.legend(
+        handles=[
+            Line2D([0], [0], marker='o', color='w', label='True Negative (TN)', markerfacecolor=COLORS_F[3], markersize=10, markeredgecolor='black'),
+            Line2D([0], [0], marker='X', color='w', label='False Positive (FP)', markerfacecolor=COLORS_F[2], markersize=10, markeredgecolor='black'),
+            Line2D([0], [0], marker='X', color='w', label='False Negative (FN)', markerfacecolor=COLORS_F[1], markersize=10, markeredgecolor='black'),
+            Line2D([0], [0], marker='o', color='w', label='True Positive (TP)', markerfacecolor=COLORS_F[0], markersize=10, markeredgecolor='black'),
+        ],
+        loc='upper left',
+        fontsize=15,
+    )
+    return fig
+
+def plot_correct_by_prob(r_families):
+    # Create figure
+    # fig, ax = plt.subplots(1, figsize=(16, 10), dpi=300)
+    fig, ax = plt.subplots(1, figsize=(18, 10))
+    sns.set_color_codes("colorblind")
+    ax.axhline(0.5, color='k', ls=':')
+
+    data = _get_families_confusion(r_families)
+    # print(data)
+    # Violin plot
+    ax = sns.violinplot(
+        data=data, 
+        x='famid', 
+        y='prediction', 
+        hue='is_correct',
+        hue_order=[True, False],
+        split=True, 
+        inner='stick',
+        scale='area',
+        linewidth=2,
+    #     palette=colors,
+        palette=['b', 'r'], 
+        saturation=2,
+
+    )
+    # ax.set
+
+    plt.setp(ax.collections, alpha=.3, linewidth=1, edgecolor='gainsboro')
+
+    # Configuring plot
+    ax.set_ylim(-0.01, 1.01)
+    ax.axhline(1.005, color='white', linewidth=3)
+    ax.axhline(-0.005, color='white', linewidth=3)
+    ax.axhline(1.01, color='white')
+    ax.set_xlabel('Family ID', fontsize=18)
+    ax.set_ylabel('Risk score', fontsize=18)
+    # ax.text(9.5, 0.75, 'Positives', rotation='vertical', verticalalignment='center')
+    # ax.text(9.5, 0.25, 'Negatives', rotation='vertical', verticalalignment='center')
 
 
+    # Configuring legend
+    ax.legend(
+        handles=[
+            Patch(facecolor='b', edgecolor='black', label='Correct', alpha=0.3),
+            Patch(facecolor='r', edgecolor='black', label='Incorrect', alpha=0.3),
+        ],
+        fontsize='large',
+        title_fontsize='large',
+        title='Predictions',
+        loc='upper left'
+    )
+    
+    return fig
 # --------------------------------------------------------------------------- #
 # ------------- Notebook 5: Examples of predictions to individuals ---------- #
 
 def _plot_examples(dataset, samples):
-    fig = plt.figure(figsize=(16,16), dpi=300)
-    outer_grid = fig.add_gridspec(4, 4, wspace=0.22, hspace=0.32)
+    # fig = plt.figure(figsize=(16,16), dpi=300)
+    fig = plt.figure(figsize=(18,18))
+    outer_grid = fig.add_gridspec(4, 4, wspace=0.3, hspace=0.4)
     color_h = sns.color_palette("Spectral_r", n_colors=100)
     for i in range(len(samples)):
         id = samples[i]
@@ -1203,9 +1733,9 @@ def _plot_examples(dataset, samples):
             ax_objs[-1].set_xticks([10])
 
             if i == 0:
-                ax_objs[-1].set_ylabel("probability", fontsize=10,fontweight="normal")
-                ax_objs[-1].text(110,-0.15,'age',fontsize=10,ha="center")
-                ax_objs[-1].text(110,1.05,title,fontsize=10,ha="center",fontweight="bold")
+                ax_objs[-1].set_ylabel("Risk score", fontsize=15,fontweight="normal")
+                ax_objs[-1].text(110,-0.20,'Age',fontsize=15,ha="center")
+                ax_objs[-1].text(110,1.05,title,fontsize=13,ha="center",fontweight="bold")
             else:
                 ax_objs[-1].set_yticklabels([])
                 ax_objs[-1].set_yticks([])
@@ -1216,32 +1746,38 @@ def _plot_examples(dataset, samples):
 
             ax_objs[-1].text(10,-0.10,age,fontsize=8,ha="center")
 
+    return fig
 
 def plot_elderly_and_positives(r):
     df = r.dataset_test_first_diag.df
     N = 16
     samples = np.random.choice(df[(df.T2D==1)&(df.AGE>60)].index, N, replace=False)
-    _plot_examples(r.dataset_test_first_diag, samples)
-
+    fig = _plot_examples(r.dataset_test_first_diag, samples)
+    return fig
 
 def plot_elderly_and_negatives(r):
     df = r.dataset_test_unique.df
     N = 16
     samples = np.random.choice(df[(df.T2D==0)&(df.AGE>60)].index, N, replace=False)
-    _plot_examples(r.dataset_test_unique, samples)
+    fig = _plot_examples(r.dataset_test_unique, samples)
+    return fig
 
 def plot_young_and_positives(r):
     df = r.dataset_test_first_diag.df
     N = 16
     samples = np.random.choice(df[(df.T2D==1)&(df.AGE<40)].index, N, replace=False)
-    _plot_examples(r.dataset_test_first_diag, samples)
+    fig = _plot_examples(r.dataset_test_first_diag, samples)
+    return fig
     
-
 def plot_young_and_negatives(r):
     df = r.dataset_test_unique.df
     N = 16
     samples = np.random.choice(df[(df.T2D==0)&(df.AGE<40)].index, N, replace=False)
-    _plot_examples(r.dataset_test_unique, samples)
+    fig = _plot_examples(r.dataset_test_unique, samples)
+    return fig
+
+def plot_cases_panel(r):
+    pass
 
 # --------------------------------------------------------------------------- #
 # ----------------- Notebook 7: Feature importance analysis ----------------- #
@@ -1380,32 +1916,37 @@ def _plot_scores(dataset, samples, report, pred_age = -1):
             neg_dist, pos_dist = _distributions(report, pred_age)
             _plot_relative_score(subfigs.flat[i], dataset.predictions_per_age[pred_age][i], neg_dist, pos_dist, title)
 
+    return fig
 
 
 def plot_relative_score_elderly_and_positives(r, pred_age=-1):
     df = r.dataset_test_first_diag.df
     N = 16
     samples = np.random.choice(df[(df.T2D==1)&(df.AGE>=60)&(df.AGE<75)].index, N, replace=False)
-    _plot_scores(r.dataset_test_first_diag, samples, r, pred_age)
+    fig = _plot_scores(r.dataset_test_first_diag, samples, r, pred_age)
     # return df[df.index.isin(samples)]
+    return fig
 
 def plot_relative_score_elderly_and_negatives(r, pred_age=-1):
     df = r.dataset_test_unique.df
     N = 16
     samples = np.random.choice(df[(df.T2D==0)&(df.AGE>=60)&(df.AGE<75)].index, N, replace=False)
-    _plot_scores(r.dataset_test_unique, samples, r, pred_age)
+    fig = _plot_scores(r.dataset_test_unique, samples, r, pred_age)
     # return df[df.index.isin(samples)]
+    return fig
 
 def plot_relative_score_young_and_positives(r, pred_age=-1):
     df = r.dataset_test_first_diag.df
     N = 16
     samples = np.random.choice(df[(df.T2D==1)&(df.AGE<40)].index, N, replace=False)
-    _plot_scores(r.dataset_test_first_diag, samples, r, pred_age)
+    fig = _plot_scores(r.dataset_test_first_diag, samples, r, pred_age)
     # return df[df.index.isin(samples)]
+    return fig
 
 def plot_relative_score_young_and_negatives(r, pred_age=-1):
     df = r.dataset_test_unique.df
     N = 16
     samples = np.random.choice(df[(df.T2D==0)&(df.AGE<40)].index, N, replace=False)
-    _plot_scores(r.dataset_test_unique, samples, r, pred_age)
+    fig = _plot_scores(r.dataset_test_unique, samples, r, pred_age)
     # return df[df.index.isin(samples)]
+    return fig

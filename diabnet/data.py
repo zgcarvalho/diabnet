@@ -140,6 +140,10 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.ndarray
                 m[0, i] = 2
             elif feat_values[i] == "M":
                 m[1, i] = 2
+            elif feat_values[i] == 'X':
+                # X is used to compute snp importance keeping sex neutral [1,1] 
+                m[0, i] = 1
+                m[1, i] = 1
 
         # Mother T2D diagnosis
         elif feat_name == "mo_t2d":
@@ -176,8 +180,8 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.ndarray
         # SNPs
         elif feat_name[:3] == "snp":
             # Dominant homozygous
-            if feat_values[i] == 0:
-                m[0, i] = 2
+            if feat_values[i] == 0: # IMPORTANT  first line represents the number of reference alleles
+                m[0, i] = 2 
             # Recessive homozygous
             elif feat_values[i] == 2:
                 m[1, i] = 2

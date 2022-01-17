@@ -30,8 +30,12 @@ class ExplainModel:
         baseline[1001] = sex # 'M'|'F'|'X'  'X' no information
         baseline = self.encode(baseline, age)
         # the lines were commented below to keep parents diagnostics as negative 
-        # baseline[0,1002] = 0.0 # remove mother diagnostic from baseline 
-        # baseline[0,1005] = 0.0 # remove father diagnostic from baseline
+        baseline.data[0,1002] += 2./3 # remove mother diagnostic from baseline 
+        baseline.data[0,1003] += 2./3 # remove mother diagnostic from baseline 
+        baseline.data[0,1004] += 2./3 # remove mother diagnostic from baseline 
+        baseline.data[0,1005] += 2./3 # remove father diagnostic from baseline
+        baseline.data[0,1006] += 2./3 # remove father diagnostic from baseline
+        baseline.data[0,1007] += 2./3 # remove father diagnostic from baseline
         return baseline
 
     def gen_inputs(self, feats, age=50):
