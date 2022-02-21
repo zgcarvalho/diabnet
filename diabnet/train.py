@@ -53,13 +53,9 @@ def _l1_l2_regularization(
         L1 and L2 regularized loss.
     """
     l1_regularization_dim1 = lambda2_dim1 * torch.sum(torch.norm(lc_params, 1, dim=1))
-    l2_regularization_dim1 = (
-        (1.0 - lambda2_dim1) / 2.0 * torch.sum(torch.norm(lc_params, 2, dim=1))
-    )
+    l2_regularization_dim1 = (1.0 - lambda2_dim1) / 2.0 * torch.sum(torch.norm(lc_params, 2, dim=1))
     l1_regularization_dim2 = lambda2_dim2 * torch.sum(torch.norm(lc_params, 1, dim=2))
-    l2_regularization_dim2 = (
-        (1.0 - lambda2_dim2) / 2.0 * torch.sum(torch.norm(lc_params, 2, dim=2))
-    )
+    l2_regularization_dim2 = (1.0 - lambda2_dim2) / 2.0 * torch.sum(torch.norm(lc_params, 2, dim=2))
 
     dim1_loss = lambda1_dim1 * (l1_regularization_dim1 + l2_regularization_dim1)
     dim2_loss = lambda1_dim2 * (l1_regularization_dim2 + l2_regularization_dim2)
@@ -113,14 +109,10 @@ def train(
     device = torch.device(device)
 
     # Create a training set
-    trainloader = DataLoader(
-        training_set, batch_size=params["batch-size"], shuffle=True
-    )
+    trainloader = DataLoader(training_set, batch_size=params["batch-size"], shuffle=True)
 
     # Create a validation set
-    valloader = DataLoader(
-        validation_set, batch_size=len(validation_set), shuffle=False
-    )
+    valloader = DataLoader(validation_set, batch_size=len(validation_set), shuffle=False)
 
     # Use soft labels
     use_correction = True
@@ -328,5 +320,5 @@ def train(
         auroc,
         avg_prec,
         fscore,
-        brier, 
+        brier,
     )

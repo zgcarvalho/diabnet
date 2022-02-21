@@ -54,9 +54,7 @@ class LocallyConnected(nn.Module):
         super(LocallyConnected, self).__init__()
 
         # Define weights
-        self.weight = nn.Parameter(
-            torch.randn(1, out_channels, in_channels, output_size)
-        )
+        self.weight = nn.Parameter(torch.randn(1, out_channels, in_channels, output_size))
 
         # Define bias
         if bias:
@@ -74,9 +72,7 @@ class LocallyConnected(nn.Module):
         elif activation.lower() == "identity":
             self.act = nn.Identity()
         else:
-            raise ValueError(
-                "`activation` must be `tanh`, `sigmoid`, `gelu` or `identity`."
-            )
+            raise ValueError("`activation` must be `tanh`, `sigmoid`, `gelu` or `identity`.")
         # TEST layernorm
         self.norm = nn.LayerNorm(output_size)
 
@@ -183,71 +179,49 @@ class Model(nn.Module):
         ages = self.get_ages(x)
         return self.sigmoid(y, ages, with_correction=self.use_correction)
 
-    def sigmoid(
-        self, o: torch.Tensor, ages: torch.Tensor, with_correction: bool = False
-    ) -> torch.Tensor:
+    def sigmoid(self, o: torch.Tensor, ages: torch.Tensor, with_correction: bool = False) -> torch.Tensor:
         # Apply sigmoid to elements of y
         # y = torch.sigmoid(y)
-        device=o.device
+        device = o.device
 
         # Apply soft label correction
         if with_correction:
             if self.soft_label_baseline_slope == 0.0:
                 base_logit, top_logit, mean_logit = torch.logit(
-                    torch.tensor([
-                        self.soft_label_baseline, 
-                        self.soft_label_topline, 
-                        (self.soft_label_baseline + self.soft_label_topline)/2], device=device))
-
+                    torch.tensor(
+                        [
+                            self.soft_label_baseline,
+                            self.soft_label_topline,
+                            (self.soft_label_baseline + self.soft_label_topline) / 2,
+                        ],
+                        device=device,
+                    )
+                )
                 # translate
                 y = o - mean_logit
                 # affine
-                r = (top_logit - base_logit)/torch.diff(torch.logit(torch.tensor([0.0000001, 0.9999999], device=device)))
-                y = torch.sigmoid(y/r)
-
+                r = (top_logit - base_logit) / torch.diff(
+                    torch.logit(torch.tensor([0.0000001, 0.9999999], device=device))
+                )
+                y = torch.sigmoid(y / r)
 
             else:
-                base_adjusted_by_age = self.soft_label_baseline + self.soft_label_baseline_slope * (ages * AGE_DENOMINATOR)
+                base_adjusted_by_age = self.soft_label_baseline + self.soft_label_baseline_slope * (
+                    ages * AGE_DENOMINATOR
+                )
                 base_logits = torch.logit(base_adjusted_by_age)
                 top_logit = torch.logit(torch.tensor([self.soft_label_topline], device=device))
-                mean_logits = torch.logit((base_adjusted_by_age+self.soft_label_topline)/2.0)
+                mean_logits = torch.logit((base_adjusted_by_age + self.soft_label_topline) / 2.0)
                 # translate
                 y = o - mean_logits
                 # affine
-                # r = torch.minimum((top_logit - base_logits)/torch.diff(torch.logit(torch.Tensor([0.0000001, 0.9999999]))), torch.ones(1))
-                r = (top_logit - base_logits)/torch.diff(torch.logit(torch.tensor([0.0000001, 0.9999999], device=device)))
-                y = torch.sigmoid(y/r)
+                r = (top_logit - base_logits) / torch.diff(
+                    torch.logit(torch.tensor([0.0000001, 0.9999999], device=device))
+                )
+                y = torch.sigmoid(y / r)
         else:
             y = torch.sigmoid(o)
         return y
-
-    # def sigmoid(
-    #     self, y: torch.Tensor, ages: torch.Tensor, with_correction: bool = False
-    # ) -> torch.Tensor:
-    #     # Apply sigmoid to elements of y
-    #     y = torch.sigmoid(y)
-
-    #     # Apply soft label correction
-    #     if with_correction:
-    #         if self.soft_label_baseline_slope == 0.0:
-    #             base = torch.ones(1).to(y.device) * self.soft_label_baseline
-    #             top = torch.ones(1).to(y.device) * self.soft_label_topline
-    #             return torch.minimum(
-    #                 torch.maximum(
-    #                     (y - base) / (top - base), torch.zeros(1).to(y.device)
-    #                 ),
-    #                 torch.ones(1).to(y.device),
-    #             )
-    #         else:
-    #             base_adjusted_by_age = self.soft_label_baseline + self.soft_label_baseline_slope * (ages * AGE_DENOMINATOR)
-    #             top = torch.ones(1).to(y.device) * self.soft_label_topline
-    #             return torch.minimum(
-    #                 torch.maximum(
-    #                     (y - base_adjusted_by_age) / (top - base_adjusted_by_age), torch.zeros(1).to(y.device)
-    #                 ),
-    #                 torch.ones(1).to(y.device),
-    #             )
-    #     return y
 
     def get_ages(self, x: torch.Tensor) -> torch.Tensor:
         return x[:, 0:1, self.age_idx]

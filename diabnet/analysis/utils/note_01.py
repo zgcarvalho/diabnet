@@ -1,18 +1,20 @@
-import torch
-import seaborn
+# import torch
+# import seaborn
 import seaborn as sns
 import numpy as np
-import pandas as pd
-from typing import Dict, List, Union, Tuple, Optional
-from collections import OrderedDict
+
+# import pandas as pd
+from typing import Dict, List, Tuple
 import matplotlib.pyplot as plt
-from matplotlib.ticker import AutoMinorLocator
-from sklearn.utils.validation import indexable
-from captum.attr import IntegratedGradients
-from diabnet.data import encode_features
+
+# from matplotlib.ticker import AutoMinorLocator
+# from sklearn.utils.validation import indexable
+# from captum.attr import IntegratedGradients
+# from diabnet.data import encode_features
 
 
 COLORS = sns.color_palette("colorblind")
+
 
 def get_metrics_from_log(fn: str) -> List[Dict[str, List[float]]]:
     """Get metrics from training log file.
@@ -66,6 +68,7 @@ def get_metrics_from_log(fn: str) -> List[Dict[str, List[float]]]:
 
     return ensemble
 
+
 def calculate_stats(
     ensemble: List[Dict[str, List[float]]]
 ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, np.ndarray]]:
@@ -109,6 +112,7 @@ def calculate_stats(
         max95[k] = np.asarray(max95[k])
 
     return mean, min5, max95
+
 
 def plot_loss(data, ax, color) -> None:
     """Plot loss for training and validation subsets.
@@ -162,6 +166,7 @@ def plot_loss(data, ax, color) -> None:
 
     return ax
 
+
 def plot_bacc(data, ax, colors):
     """Plot balanced accuracy.
 
@@ -204,6 +209,5 @@ def plot_bacc(data, ax, colors):
 
     # Ticks
     plt.yticks(np.arange(40, 101, 10))
-
 
     return ax

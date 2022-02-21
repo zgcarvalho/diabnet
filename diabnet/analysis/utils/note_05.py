@@ -89,18 +89,24 @@ def _plot_examples(fig, dataset, samples, compact=False, global_grid=None):
                 ax_objs[-1].text(10,-0.10,age,fontsize=8,ha="center")
             
             else:
+                ax_objs[-1].spines['bottom'].set_color('gray')
+                ax_objs[-1].spines['top'].set_color('gray') 
+                ax_objs[-1].spines['right'].set_color('gray')
+                ax_objs[-1].spines['left'].set_color('gray')
                 ax_objs[-1].set_xticklabels([])
                 ax_objs[-1].set_xticks([10])
                 ax_objs[-1].set_yticklabels([])
                 # ax_objs[-1].set_yticks([])
                 ax_objs[-1].set_yticks([0,0.5,1])
                 ax_objs[-1].set_xlim(1,17)
-                ax_objs[-1].set_ylim(-0.02,1.02)
+                ax_objs[-1].set_ylim(-0.05,1.05)
                 spines = ["right","left"]
                 for s in spines:
                     ax_objs[-1].spines[s].set_visible(False)
                 if i == 0: 
                     ax_objs[-1].spines['left'].set_visible(True)
+                    # if j == 0:
+                    #     ax_objs[-1].text(450, 1.20,'Age',fontsize=15,ha="center")
                     # if j in [0, 4, 8, 12]:
                     #     ax_objs[-1].set_ylabel("Risk score", fontsize=15,fontweight="normal")
                     #     ax_objs[-1].set_yticklabels([0.0,0.5,1.0])
@@ -113,42 +119,67 @@ def _plot_examples(fig, dataset, samples, compact=False, global_grid=None):
         
     return fig
 
-def plot_elderly_and_positives(r):
+def plot_elderly_and_positives(r, compact=False, subfig=None, global_grid=None, sort=False):
     fig = plt.figure(figsize=(18,18))
     df = r.dataset_test_first_diag.df
     N = 16
     samples = np.random.choice(df[(df.T2D==1)&(df.AGE>60)].index, N, replace=False)
-    fig = _plot_examples(fig, r.dataset_test_first_diag, samples)
-    return fig
+    if sort:
+        # sort samples by mean risk score 
+        mean_samples = np.array([np.mean([r.dataset_test_first_diag.predictions_per_age[age][s] for age in np.arange(20, 75, 5)]) for s in samples])
+        samples = samples[np.argsort(mean_samples)]
+    if subfig != None:
+        _plot_examples(subfig, r.dataset_test_first_diag, samples, compact=compact, global_grid=global_grid)
+    else:
+        fig = _plot_examples(fig, r.dataset_test_first_diag, samples, compact=compact)
+        return fig
 
-def plot_elderly_and_negatives(r):
+def plot_elderly_and_negatives(r, compact=False, subfig=None, global_grid=None, sort=False):
     fig = plt.figure(figsize=(18,18))
     df = r.dataset_test_unique.df
     N = 16
     samples = np.random.choice(df[(df.T2D==0)&(df.AGE>60)].index, N, replace=False)
-    fig = _plot_examples(fig, r.dataset_test_unique, samples)
-    return fig
-
-def plot_young_and_positives(r):
-    fig = plt.figure(figsize=(18,18))
-    df = r.dataset_test_first_diag.df
-    N = 16
-    samples = np.random.choice(df[(df.T2D==1)&(df.AGE<40)].index, N, replace=False)
-    _plot_examples(fig, r.dataset_test_first_diag, samples)
-    return fig
-    
-def plot_young_and_negatives(r, compact=False, subfig=None, global_grid=None):
-    fig = plt.figure(figsize=(18,18))
-    df = r.dataset_test_unique.df
-    N = 16
-    samples = np.random.choice(df[(df.T2D==0)&(df.AGE<40)].index, N, replace=False)
+    if sort:
+        # sort samples by mean risk score 
+        mean_samples = np.array([np.mean([r.dataset_test_unique.predictions_per_age[age][s] for age in np.arange(20, 75, 5)]) for s in samples])
+        samples = samples[np.argsort(mean_samples)]
     if subfig != None:
         _plot_examples(subfig, r.dataset_test_unique, samples, compact=compact, global_grid=global_grid)
     else:
         fig = _plot_examples(fig, r.dataset_test_unique, samples, compact=compact)
         return fig
 
-def plot_cases_panel(r):
+def plot_young_and_positives(r, compact=False, subfig=None, global_grid=None, sort=False):
+    fig = plt.figure(figsize=(18,18))
+    df = r.dataset_test_first_diag.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==1)&(df.AGE<40)].index, N, replace=False)
+    if sort:
+        # sort samples by mean risk score 
+        mean_samples = np.array([np.mean([r.dataset_test_first_diag.predictions_per_age[age][s] for age in np.arange(20, 75, 5)]) for s in samples])
+        samples = samples[np.argsort(mean_samples)]
+    if subfig != None:
+        _plot_examples(subfig, r.dataset_test_first_diag, samples, compact=compact, global_grid=global_grid)
+    else:
+        fig = _plot_examples(fig, r.dataset_test_first_diag, samples, compact=compact)
+        return fig
+    
+def plot_young_and_negatives(r, compact=False, subfig=None, global_grid=None, sort=False):
+    fig = plt.figure(figsize=(18,18))
+    df = r.dataset_test_unique.df
+    N = 16
+    samples = np.random.choice(df[(df.T2D==0)&(df.AGE<40)].index, N, replace=False)
+    if sort:
+        # sort samples by mean risk score 
+        mean_samples = np.array([np.mean([r.dataset_test_unique.predictions_per_age[age][s] for age in np.arange(20, 75, 5)]) for s in samples])
+        samples = samples[np.argsort(mean_samples)]
+    if subfig != None:
+        _plot_examples(subfig, r.dataset_test_unique, samples, compact=compact, global_grid=global_grid)
+    else:
+        fig = _plot_examples(fig, r.dataset_test_unique, samples, compact=compact)
+        return fig
+
+def plot_cases_panel(r, sort=False):
     fig = plt.figure(figsize=(18,18))
     global_grid = fig.add_gridspec(2,2, hspace=0.05, wspace=0.05)
     # fig.get_constrained_layout_pads
@@ -156,8 +187,8 @@ def plot_cases_panel(r):
     # fig.set_constrained_layout_pads(hspace=0.0, h_pad=0.0, wspace=0.0, w_pad=0.0) 
     # subfigs = fig.subfigures(2, 2, wspace=0, hspace=0)
     # plt.subplots_adjust(hspace=0.0, wspace=0.00)
-    plot_young_and_negatives(r, compact=True, subfig=fig, global_grid=global_grid[0,0])
-    plot_young_and_negatives(r, compact=True, subfig=fig, global_grid=global_grid[1,0])
-    plot_young_and_negatives(r, compact=True, subfig=fig, global_grid=global_grid[0,1])
-    plot_young_and_negatives(r, compact=True, subfig=fig, global_grid=global_grid[1,1])
+    plot_elderly_and_negatives(r, compact=True, subfig=fig, global_grid=global_grid[0,0], sort=sort)
+    plot_young_and_negatives(r, compact=True, subfig=fig, global_grid=global_grid[0,1], sort=sort)
+    plot_elderly_and_positives(r, compact=True, subfig=fig, global_grid=global_grid[1,0], sort=sort)
+    plot_young_and_positives(r, compact=True, subfig=fig, global_grid=global_grid[1,1], sort=sort)
     return fig

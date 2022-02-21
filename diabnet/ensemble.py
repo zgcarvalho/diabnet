@@ -64,10 +64,6 @@ class Ensemble(object):
             in the ensemble times the number of samples per model.
         """
         prob = np.array(
-            [
-                model.apply(x).detach().numpy()[0, 0]
-                for model in self.models
-                for _ in range(samples_per_model)
-            ]
+            [model.apply(x).detach().numpy()[0, 0] for model in self.models for _ in range(samples_per_model)]
         )
         return prob

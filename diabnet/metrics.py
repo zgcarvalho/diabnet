@@ -1,6 +1,5 @@
 import torch
-import numpy as np
-from typing import Union, Tuple
+from typing import Tuple
 
 
 def ece_mce(

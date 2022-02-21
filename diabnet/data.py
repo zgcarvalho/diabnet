@@ -9,6 +9,7 @@ __all__ = ["DiabDataset", "get_feature_names", "encode_features"]
 AGE_DENOMINATOR = 50
 SOFT_LABEL_MIN_X_INTERCEPT = 120
 
+
 def get_feature_names(
     fn: str,
     use_sex: bool = True,
@@ -140,8 +141,8 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.ndarray
                 m[0, i] = 2
             elif feat_values[i] == "M":
                 m[1, i] = 2
-            elif feat_values[i] == 'X':
-                # X is used to compute snp importance keeping sex neutral [1,1] 
+            elif feat_values[i] == "X":
+                # X is used to compute snp importance keeping sex neutral [1,1]
                 m[0, i] = 1
                 m[1, i] = 1
 
@@ -180,8 +181,8 @@ def encode_features(feat_names: List[str], feat_values: List[Any]) -> np.ndarray
         # SNPs
         elif feat_name[:3] == "snp":
             # Dominant homozygous
-            if feat_values[i] == 0: # IMPORTANT  first line represents the number of reference alleles
-                m[0, i] = 2 
+            if feat_values[i] == 0:  # IMPORTANT  first line represents the number of reference alleles
+                m[0, i] = 2
             # Recessive homozygous
             elif feat_values[i] == 2:
                 m[1, i] = 2
@@ -340,10 +341,7 @@ class DiabDataset(Dataset):
         self._ages = df["AGE"].values
         # Encoded features in torch.Tensor object
         self.features = torch.tensor(
-            [
-                encode_features(self.feat_names, raw_value)
-                for raw_value in self._raw_values
-            ],
+            [encode_features(self.feat_names, raw_value) for raw_value in self._raw_values],
             dtype=torch.float,
         ).to(device)
         # Prepare target labels
@@ -358,13 +356,9 @@ class DiabDataset(Dataset):
             # Use target labels
             labels = self._raw_labels
         # Change shape from (n, ) to (n, 1)
-        self.labels = torch.unsqueeze(torch.tensor(labels, dtype=torch.float), 1).to(
-            device
-        )
+        self.labels = torch.unsqueeze(torch.tensor(labels, dtype=torch.float), 1).to(device)
 
-    def _soft_label(
-        self, baseline: float, topline: float, baseline_slope: float
-    ) -> np.ndarray:
+    def _soft_label(self, baseline: float, topline: float, baseline_slope: float) -> np.ndarray:
         """Convert raw target labels to soft labels.
 
         Parameters
@@ -409,8 +403,7 @@ class DiabDataset(Dataset):
                 f"`soft_label_baseline_slope` must be greater than (-baseline/120), {baseline_slope}, {baseline}, {(-baseline / SOFT_LABEL_MIN_X_INTERCEPT)}"
             )
 
-
-                # Correct target labels with soft labels method
+            # Correct target labels with soft labels method
         if baseline_slope == 0.0:
             soft_labels = np.maximum(self._raw_labels * topline, baseline)
         else:
@@ -431,10 +424,6 @@ class DiabDataset(Dataset):
         return self.features[idx], self.labels[idx]
 
     # FIXME: Seem unused -> Remove
-    def adjust_soft_label(
-        self, baseline: float, topline: float, baseline_slope: float
-    ) -> None:
+    def adjust_soft_label(self, baseline: float, topline: float, baseline_slope: float) -> None:
         labels = self._soft_label(baseline, topline, baseline_slope)
-        self.labels = torch.unsqueeze(torch.tensor(labels, dtype=torch.float), 1).to(
-            "cuda"
-        )
+        self.labels = torch.unsqueeze(torch.tensor(labels, dtype=torch.float), 1).to("cuda")

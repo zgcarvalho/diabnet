@@ -1,26 +1,28 @@
-import torch
+# import torch
 import seaborn
 import seaborn as sns
-import numpy as np
+# import numpy as np
 import pandas as pd
 from typing import Dict, List, Union, Tuple, Optional
-from collections import OrderedDict
+# from collections import OrderedDict
 import matplotlib.pyplot as plt
-from matplotlib.ticker import AutoMinorLocator
-from sklearn.utils.validation import indexable
-from captum.attr import IntegratedGradients
-from diabnet.data import encode_features
+# from matplotlib.ticker import AutoMinorLocator
+# from sklearn.utils.validation import indexable
+# from captum.attr import IntegratedGradients
+# from diabnet.data import encode_features
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 
 COLORS = sns.color_palette("colorblind")
 
 
-from diabnet.ensemble import Ensemble
-from diabnet.analysis.report import DiabNetReport
-from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
+# from diabnet.ensemble import Ensemble
+# from diabnet.analysis.report import DiabNetReport
+
 
 COLORS_F = sns.color_palette("Set3")
+
 
 def _data2barplot(
     data: pd.DataFrame, selection: Optional[List[str]] = None, orient: str = "index"
@@ -131,26 +133,25 @@ def barplot(
     colors_by_fam = {fam: colors[i] for i, fam in enumerate(df.sort_index().index)}
 
     # The width of a single bar
-    bar_width = total_width / (n_bars+1) # bar_width = 0.9/10
+    bar_width = total_width / (n_bars + 1)  # bar_width = 0.9/10
 
     # List containing handles for the drawn bars, used for the legend
     bars = []
-    
+
     for i, colname in enumerate(selection):
         df_tmp = df.sort_values(by=colname)
         x_offset = i
         c = [colors_by_fam[f] for f in df_tmp.index]
         for x, y in enumerate(df_tmp[colname].values):
             bar = ax.bar(
-                x * bar_width + x_offset - (bar_width * n_bars/2 - bar_width/2),
+                x * bar_width + x_offset - (bar_width * n_bars / 2 - bar_width / 2),
                 y,
                 width=bar_width * single_width,
                 color=c[x],
-                edgecolor='gainsboro',
+                edgecolor="gainsboro",
                 linewidth=1,
             )
         bars.append(bar[0])
-
 
     # Set x ticks
     ax.set_xticks(range(len(labels)), minor=False)
@@ -206,60 +207,66 @@ def barplot(
     # if legend:
     #     ax.legend(bars, data.keys())
 
+
 def _get_families_data(r_families):
     data = {}
     for fam, r in r_families.items():
         n = len(r.dataset_test_unique.labels)
         data[fam] = {
-            "auc": r.auc(bootnum=1000, interval='HDI')['value'],
-            "f1": r.f1(bootnum=1000, interval='HDI')['value'],
-            "acc": r.acc(bootnum=1000, interval='HDI')['value'],
-            "bacc": r.bacc(bootnum=1000, interval='HDI')['value'],
-            "precision": r.precision(bootnum=1000, interval='HDI')['value'],
-            "sensitivity": r.sensitivity(bootnum=1000, interval='HDI')['value'],
-            "specificity": r.specificity(bootnum=1000, interval='HDI')['value'],
-            "avgprec": r.average_precision(bootnum=1000, interval='HDI')['value'],
-            "ece": r.ece(bootnum=10000, interval='HDI')['value'],
-            "mce": r.mce(bootnum=10000, interval='HDI')['value'],
-            "brier": r.brier(bootnum=10000, interval='HDI')['value'],
+            "auc": r.auc(bootnum=1000, interval="HDI")["value"],
+            "f1": r.f1(bootnum=1000, interval="HDI")["value"],
+            "acc": r.acc(bootnum=1000, interval="HDI")["value"],
+            "bacc": r.bacc(bootnum=1000, interval="HDI")["value"],
+            "precision": r.precision(bootnum=1000, interval="HDI")["value"],
+            "sensitivity": r.sensitivity(bootnum=1000, interval="HDI")["value"],
+            "specificity": r.specificity(bootnum=1000, interval="HDI")["value"],
+            "avgprec": r.average_precision(bootnum=1000, interval="HDI")["value"],
+            "ece": r.ece(bootnum=10000, interval="HDI")["value"],
+            "mce": r.mce(bootnum=10000, interval="HDI")["value"],
+            "brier": r.brier(bootnum=10000, interval="HDI")["value"],
             "n": n,
-            "pos%": sum(r.dataset_test_unique.labels)/n,
+            "pos%": sum(r.dataset_test_unique.labels) / n,
         }
-    return pd.DataFrame.from_dict(data, orient='index')
+    return pd.DataFrame.from_dict(data, orient="index")
+
 
 def _get_families_ages(r_families):
     ages = {}
     for fam, r in r_families.items():
         ages[fam] = r.dataset_test_unique.df.AGE.values
-    return pd.DataFrame.from_dict(ages, orient='index').T
+    return pd.DataFrame.from_dict(ages, orient="index").T
+
 
 def _get_families_confusion(r_families):
     dtmp = pd.DataFrame()
     for fam, r in r_families.items():
         tmp = pd.DataFrame(
-        {
-            'age': r.dataset_test_unique.df.AGE.values,
-#             'targets': r.dataset_test_unique.labels,
-            'prediction': r.dataset_test_unique.predictions,
-            'label': r.dataset_test_unique.labels,
-            'famid': len(r.dataset_test_unique.labels) * [fam],
-            'is_correct': len(r.dataset_test_unique.labels) * [True], # init column
-        })
+            {
+                "age": r.dataset_test_unique.df.AGE.values,
+                #             'targets': r.dataset_test_unique.labels,
+                "prediction": r.dataset_test_unique.predictions,
+                "label": r.dataset_test_unique.labels,
+                "famid": len(r.dataset_test_unique.labels) * [fam],
+                "is_correct": len(r.dataset_test_unique.labels) * [True],  # init column
+            }
+        )
         dtmp = dtmp.append(tmp)
-        
+
     def confusion(row):
-        if row['prediction'] > 0.5 and row['label'] > 0.5:
-            return 'TP'
-        elif row['prediction'] <= 0.5 and row['label'] <= 0.5:
-            return 'TN'
-        elif row['prediction'] > 0.5 and row['label'] <= 0.5:
-            return 'FP'
-        elif row['prediction'] <= 0.5 and row['label'] > 0.5:
-            return 'FN'
-    dtmp['confusion'] = dtmp.apply(lambda row: confusion(row), axis=1)
-    dtmp.loc[(dtmp.confusion == 'FP') | (dtmp.confusion == 'FN'),'is_correct'] = False
-    # print(dtmp.where((dtmp.confusion == 'FP') | (dtmp.confusion == 'FN'), other=True)) 
+        if row["prediction"] > 0.5 and row["label"] > 0.5:
+            return "TP"
+        elif row["prediction"] <= 0.5 and row["label"] <= 0.5:
+            return "TN"
+        elif row["prediction"] > 0.5 and row["label"] <= 0.5:
+            return "FP"
+        elif row["prediction"] <= 0.5 and row["label"] > 0.5:
+            return "FN"
+
+    dtmp["confusion"] = dtmp.apply(lambda row: confusion(row), axis=1)
+    dtmp.loc[(dtmp.confusion == "FP") | (dtmp.confusion == "FN"), "is_correct"] = False
+    # print(dtmp.where((dtmp.confusion == 'FP') | (dtmp.confusion == 'FN'), other=True))
     return dtmp
+
 
 def plot_families_metrics(r_families):
     # colors = sns.color_palette("Set3")
@@ -277,7 +284,7 @@ def plot_families_metrics(r_families):
             "avgprec",
             "bacc",
             # "acc",
-            "f1",        
+            "f1",
             "precision",
             "sensitivity",
             "specificity",
@@ -291,7 +298,7 @@ def plot_families_metrics(r_families):
             "AUPRC",
             "Balanced\nAccuracy",
             # "Accuracy",
-            "F1-Score", 
+            "F1-Score",
             "Precision",
             "Sensitivity",
             "Specificity",
@@ -308,26 +315,28 @@ def plot_families_metrics(r_families):
     )
     return fig
 
+
 def plot_families_ages(r_families):
     # fig, ax = plt.subplots(1, figsize=(16, 10), dpi=300)
     fig, ax = plt.subplots(1, figsize=(18, 8))
 
     ages = _get_families_ages(r_families)
 
-    # Plot boxplot for each family  
+    # Plot boxplot for each family
     sns.boxplot(
-        data=ages, 
-        palette=COLORS_F, 
+        data=ages,
+        palette=COLORS_F,
         showmeans=True,
-        meanprops={"marker":"o", "markerfacecolor":"white", "markeredgecolor":"red"}
+        meanprops={"marker": "o", "markerfacecolor": "white", "markeredgecolor": "red"},
     )
 
     # Configuring plot
-    ax.set_xlabel('Family ID')
-    ax.set_ylabel('Age')
+    ax.set_xlabel("Family ID")
+    ax.set_ylabel("Age")
 
     # Display plot
     return fig
+
 
 def plot_families_confusion(r_families, with_boxplot=False):
     # Create figure
@@ -338,117 +347,152 @@ def plot_families_confusion(r_families, with_boxplot=False):
 
     # Violin plot age
     sns.stripplot(
-        data=data[data.is_correct], 
-        x='famid', 
-        y='age', 
-        hue='confusion',
-        hue_order=['', 'TN', 'FP', 'FN', 'TP', ''],
-        marker='o',
+        data=data[data.is_correct],
+        x="famid",
+        y="age",
+        hue="confusion",
+        hue_order=["", "TN", "FP", "FN", "TP", ""],
+        marker="o",
         size=8,
         dodge=True,
-        palette=['white', COLORS_F[3],COLORS_F[2],COLORS_F[1],COLORS_F[0], 'white'], 
+        palette=["white", COLORS_F[3], COLORS_F[2], COLORS_F[1], COLORS_F[0], "white"],
         # palette=COLORS_F,
-        jitter=0.25, 
+        jitter=0.25,
         linewidth=1,
-        ax=ax
+        ax=ax,
     )
 
     # Violin plot age
     sns.stripplot(
-        data=data[~data.is_correct],  
-        x='famid', 
-        y='age', 
-        hue='confusion',
-        hue_order=['', 'TN', 'FP', 'FN', 'TP', ''],
-        marker='X',
+        data=data[~data.is_correct],
+        x="famid",
+        y="age",
+        hue="confusion",
+        hue_order=["", "TN", "FP", "FN", "TP", ""],
+        marker="X",
         size=10,
         dodge=True,
         # palette=COLORS_F,
-        palette=['white', COLORS_F[3],COLORS_F[2],COLORS_F[1],COLORS_F[0], 'white'], 
-        jitter=0.05, 
+        palette=["white", COLORS_F[3], COLORS_F[2], COLORS_F[1], COLORS_F[0], "white"],
+        jitter=0.05,
         linewidth=1,
-        ax=ax
+        ax=ax,
     )
 
     if with_boxplot:
         sns.boxplot(
-            data=data, 
-            x='famid', 
-            y='age',
-            color='gainsboro',
+            data=data,
+            x="famid",
+            y="age",
+            color="gainsboro",
             width=0.70,
-            boxprops=dict(alpha=.5),
+            boxprops=dict(alpha=0.5),
             linewidth=1,
-            showfliers = False,
+            showfliers=False,
         )
 
     # Configuring plot
-    ax.set_xlabel('Family ID', fontsize=18)
-    ax.set_ylabel('Age', fontsize=18)
+    ax.set_xlabel("Family ID", fontsize=18)
+    ax.set_ylabel("Age", fontsize=18)
 
     # Configuring legend
     ax.legend(
         handles=[
-            Line2D([0], [0], marker='o', color='w', label='True Negative (TN)', markerfacecolor=COLORS_F[3], markersize=10, markeredgecolor='black'),
-            Line2D([0], [0], marker='X', color='w', label='False Positive (FP)', markerfacecolor=COLORS_F[2], markersize=10, markeredgecolor='black'),
-            Line2D([0], [0], marker='X', color='w', label='False Negative (FN)', markerfacecolor=COLORS_F[1], markersize=10, markeredgecolor='black'),
-            Line2D([0], [0], marker='o', color='w', label='True Positive (TP)', markerfacecolor=COLORS_F[0], markersize=10, markeredgecolor='black'),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="True Negative (TN)",
+                markerfacecolor=COLORS_F[3],
+                markersize=10,
+                markeredgecolor="black",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="X",
+                color="w",
+                label="False Positive (FP)",
+                markerfacecolor=COLORS_F[2],
+                markersize=10,
+                markeredgecolor="black",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="X",
+                color="w",
+                label="False Negative (FN)",
+                markerfacecolor=COLORS_F[1],
+                markersize=10,
+                markeredgecolor="black",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="True Positive (TP)",
+                markerfacecolor=COLORS_F[0],
+                markersize=10,
+                markeredgecolor="black",
+            ),
         ],
-        loc='upper left',
+        loc="upper left",
         fontsize=15,
     )
     return fig
+
 
 def plot_correct_by_prob(r_families):
     # Create figure
     # fig, ax = plt.subplots(1, figsize=(16, 10), dpi=300)
     fig, ax = plt.subplots(1, figsize=(18, 10))
     sns.set_color_codes("colorblind")
-    ax.axhline(0.5, color='k', ls=':')
+    ax.axhline(0.5, color="k", ls=":")
 
     data = _get_families_confusion(r_families)
     # print(data)
     # Violin plot
     ax = sns.violinplot(
-        data=data, 
-        x='famid', 
-        y='prediction', 
-        hue='is_correct',
+        data=data,
+        x="famid",
+        y="prediction",
+        hue="is_correct",
         hue_order=[True, False],
-        split=True, 
-        inner='stick',
-        scale='area',
+        split=True,
+        inner="stick",
+        scale="area",
         linewidth=2,
-    #     palette=colors,
-        palette=['b', 'r'], 
+        #     palette=colors,
+        palette=["b", "r"],
         saturation=2,
-
     )
     # ax.set
 
-    plt.setp(ax.collections, alpha=.3, linewidth=1, edgecolor='gainsboro')
+    plt.setp(ax.collections, alpha=0.3, linewidth=1, edgecolor="gainsboro")
 
     # Configuring plot
     ax.set_ylim(-0.01, 1.01)
-    ax.axhline(1.005, color='white', linewidth=3)
-    ax.axhline(-0.005, color='white', linewidth=3)
-    ax.axhline(1.01, color='white')
-    ax.set_xlabel('Family ID', fontsize=18)
-    ax.set_ylabel('Risk score', fontsize=18)
+    ax.axhline(1.005, color="white", linewidth=3)
+    ax.axhline(-0.005, color="white", linewidth=3)
+    ax.axhline(1.01, color="white")
+    ax.set_xlabel("Family ID", fontsize=18)
+    ax.set_ylabel("Risk score", fontsize=18)
     # ax.text(9.5, 0.75, 'Positives', rotation='vertical', verticalalignment='center')
     # ax.text(9.5, 0.25, 'Negatives', rotation='vertical', verticalalignment='center')
-
 
     # Configuring legend
     ax.legend(
         handles=[
-            Patch(facecolor='b', edgecolor='black', label='Correct', alpha=0.3),
-            Patch(facecolor='r', edgecolor='black', label='Incorrect', alpha=0.3),
+            Patch(facecolor="b", edgecolor="black", label="Correct", alpha=0.3),
+            Patch(facecolor="r", edgecolor="black", label="Incorrect", alpha=0.3),
         ],
-        fontsize='large',
-        title_fontsize='large',
-        title='Predictions',
-        loc='upper left'
+        fontsize="large",
+        title_fontsize="large",
+        title="Predictions",
+        loc="upper left",
     )
-    
+
     return fig

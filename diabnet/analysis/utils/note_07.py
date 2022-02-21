@@ -3,16 +3,17 @@ import seaborn
 import seaborn as sns
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Union, Tuple, Optional
-from collections import OrderedDict
-import matplotlib.pyplot as plt
-from matplotlib.ticker import AutoMinorLocator
-from sklearn.utils.validation import indexable
+# from typing import Dict, List, Union, Tuple, Optional
+# from collections import OrderedDict
+# import matplotlib.pyplot as plt
+# from matplotlib.ticker import AutoMinorLocator
+# from sklearn.utils.validation import indexable
 from captum.attr import IntegratedGradients
 from diabnet.data import encode_features
 
 
 COLORS = sns.color_palette("colorblind")
+
 
 def get_feature_importance(values, age, sex) -> pd.DataFrame:
     imp = values.calc_attr(age, sex)
@@ -64,9 +65,7 @@ class ExplainModel:
             ig = IntegratedGradients(lambda x: m.apply(x))
             attr = ig.attribute(inputs, baselines=baseline)
             for i in range(1000):
-                imp[self.feat_names[i]].append(
-                    attr[:, 1, i][mask[:, i]].detach().numpy()
-                )
+                imp[self.feat_names[i]].append(attr[:, 1, i][mask[:, i]].detach().numpy())
 
         for i in range(1000):
             imp[self.feat_names[i]] = np.concatenate(imp[self.feat_names[i]])
@@ -76,8 +75,6 @@ class ExplainModel:
     def attr_snps_mean(self, attrs, mask):
         imp = {}
         for i in range(1000):
-            imp[self.feat_names[i]] = np.concatenate(
-                [attr[:, 1, i][mask[:, i]].detach().numpy() for attr in attrs]
-            )
+            imp[self.feat_names[i]] = np.concatenate([attr[:, 1, i][mask[:, i]].detach().numpy() for attr in attrs])
 
         return imp
