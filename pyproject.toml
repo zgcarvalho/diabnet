@@ -29,7 +29,7 @@ pynvim = "^0.4.2"
 mypy = "^0.910"
 pylint = ">=2.6.0"
 black = "^21.6b0"
-importlib-metadata = "^4.6.0"
+importlib-metadata = "^5.0.0"
 ipykernel = "^5.5.3"
 pyright = "^0.0.9"
 
